@@ -1,0 +1,238 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║     📊 Geo-Political Stock Monitor - India                      ║
+║                                                                  ║
+║     Starting Dashboard at http://0.0.0.0:8000                   ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+    
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 51277.61it/s]
+[1mBertForSequenceClassification LOAD REPORT[0m from: ProsusAI/finbert
+Key                          | Status     |  | 
+-----------------------------+------------+--+-
+bert.embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+INFO:     Started server process [6133]
+INFO:     Waiting for application startup.
+Nifty tech error: Cannot set a DataFrame with multiple columns to the single column Midpoint
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:64008 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64009 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64022 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64023 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64040 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64041 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64057 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64058 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64074 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64075 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64090 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64091 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64108 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64109 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64121 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64122 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64132 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64204 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64205 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64204 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64205 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64204 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64322 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64323 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64336 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64337 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64353 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64354 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64367 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64368 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64384 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64385 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64397 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64398 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64415 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64416 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64430 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64431 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64448 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64449 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64687 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64687 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64687 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64687 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64708 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64708 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64707 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64688 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64731 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64732 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64717 - "GET /dashboard HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64717 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65043 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65043 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65043 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65043 - "GET /dashboard HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65043 - "GET /dashboard HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65153 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65153 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65154 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65332 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65333 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65353 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65354 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65371 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65386 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65387 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65405 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65406 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65419 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65420 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65438 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65439 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65454 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65455 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65474 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65475 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65488 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65489 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65506 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65508 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65521 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65522 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49307 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49308 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49320 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49321 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49337 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49338 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49352 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49353 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49369 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49370 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49392 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49393 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49411 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49412 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49428 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49429 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49447 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49448 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49460 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49461 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49477 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49478 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49507 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49509 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49677 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49678 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49691 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49692 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49708 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49709 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49730 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49732 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49757 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49758 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49770 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49771 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49798 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49799 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49814 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49815 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49836 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49837 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49870 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49871 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49893 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49893 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49894 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49901 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49902 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49905 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49906 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49909 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49910 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49914 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49918 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49919 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49922 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49923 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49926 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49927 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50017 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50018 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50087 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50088 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50091 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50092 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50097 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50098 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50102 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50103 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50106 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50107 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50110 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50111 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50114 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50115 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50120 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50121 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50123 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50124 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50129 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50130 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50133 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50134 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50137 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50138 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50141 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50142 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50145 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50146 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50150 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50154 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50155 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50161 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50162 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50167 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50174 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50175 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50178 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50179 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50182 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50183 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50186 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50187 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50189 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50190 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50194 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50195 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50197 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50197 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50198 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50200 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50202 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50279 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50280 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50361 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50362 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50365 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50366 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50369 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50370 - "GET /api/market-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50374 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50375 - "GET /api/market-status HTTP/1.1" 200 OK
+/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/resource_tracker.py:396: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown: {'/loky-6133-g5iycwz5'}
+  warnings.warn(

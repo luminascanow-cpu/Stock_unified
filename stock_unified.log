@@ -1,0 +1,451 @@
+2026-03-18 06:52:22,561 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 06:52:22,561 - main - INFO - 📊 Refreshing data...
+2026-03-18 06:52:22,561 - services.technical_service - INFO - Fetching technical data...
+2026-03-18 06:52:22,562 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 06:52:22,562 - services.confluence_engine - INFO - Generating confluence signals...
+2026-03-18 06:52:22,562 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 06:55:44,598 - main - INFO - Shutting down...
+2026-03-18 06:56:03,235 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 06:56:03,235 - main - INFO - 📊 Refreshing data...
+2026-03-18 06:56:03,235 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 06:56:03,235 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 06:56:08,663 - main - ERROR - Refresh loop error: name 'asyncio' is not defined
+2026-03-18 06:56:28,789 - main - INFO - Shutting down...
+2026-03-18 06:56:31,999 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 06:56:31,999 - main - INFO - 📊 Refreshing data...
+2026-03-18 06:56:31,999 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 06:56:31,999 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 06:56:39,864 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 06:56:47,410 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 06:56:54,914 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 06:57:02,135 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 06:57:09,510 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 06:57:16,680 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 06:57:20,927 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 06:57:21,673 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 06:57:21,693 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 06:57:21,693 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 06:57:25,755 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 06:57:28,422 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 06:57:28,423 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 06:57:28,423 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 06:57:28,423 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 06:57:28,423 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 06:57:58,552 - main - INFO - Shutting down...
+2026-03-18 06:58:00,410 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 06:58:00,410 - main - INFO - 📊 Refreshing data...
+2026-03-18 06:58:00,411 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 06:58:00,411 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 06:58:07,842 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 06:58:14,997 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 06:58:22,464 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 06:58:30,084 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 06:58:37,499 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 06:58:44,715 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 06:58:49,391 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 06:58:50,147 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 06:58:50,213 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 06:58:50,213 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 06:58:54,406 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 06:59:45,684 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 06:59:45,684 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 06:59:45,684 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 06:59:45,684 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 06:59:45,684 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 07:00:36,034 - main - INFO - Shutting down...
+2026-03-18 07:00:53,066 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 07:00:53,066 - main - INFO - 📊 Refreshing data...
+2026-03-18 07:00:53,066 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 07:00:53,066 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 07:01:00,962 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 07:01:07,957 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 07:01:15,272 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 07:01:22,702 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 07:01:30,110 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 07:01:37,354 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 07:01:41,828 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 07:01:42,702 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 07:01:42,705 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 07:01:42,706 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 07:01:46,683 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 07:01:49,392 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 07:01:49,393 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 07:01:49,393 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 07:01:49,393 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 07:01:49,393 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 08:52:01,649 - main - INFO - 📊 Refreshing data...
+2026-03-18 08:52:01,649 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 08:52:01,649 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 08:52:09,530 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 08:52:18,518 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 09:04:50,875 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 09:04:50,876 - yfinance - ERROR - ['NYKAA.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 09:04:56,214 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 09:05:04,426 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 09:05:12,160 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 09:20:15,464 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 09:20:15,464 - yfinance - ERROR - ['CAMS.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 09:20:24,492 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 09:20:28,121 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 09:20:28,709 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 09:20:28,735 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 09:20:28,735 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 09:20:33,022 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 09:20:35,992 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 09:20:35,992 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 09:20:35,992 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 09:20:35,992 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 09:20:35,992 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 12:03:35,318 - main - INFO - 📊 Refreshing data...
+2026-03-18 12:03:35,318 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 12:03:35,318 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 12:03:42,847 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 12:07:51,855 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 12:23:02,357 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 12:23:11,961 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 12:23:19,195 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 12:23:27,482 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 12:23:32,551 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 12:23:32,565 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 12:23:32,565 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 12:38:34,402 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 12:38:34,402 - yfinance - ERROR - ['APOLLOTYRE.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 12:38:39,616 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 12:38:42,289 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 12:38:42,289 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 12:38:42,290 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 12:38:42,290 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 12:38:42,290 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 15:41:46,321 - main - INFO - 📊 Refreshing data...
+2026-03-18 15:41:46,321 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 15:41:46,321 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 15:41:54,862 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 15:42:02,925 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 15:57:04,377 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 15:57:04,378 - yfinance - ERROR - ['YESBANK.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 15:57:15,135 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 15:57:23,694 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 16:11:57,991 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 16:12:07,709 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 16:27:16,089 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 16:27:16,107 - yfinance - ERROR - ['TATAMOTORS.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 16:27:23,392 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 16:27:26,499 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 16:27:26,499 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 16:27:26,499 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 16:27:26,499 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 16:27:26,499 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 19:06:33,645 - main - INFO - 📊 Refreshing data...
+2026-03-18 19:06:33,648 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 19:06:33,648 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 19:14:50,968 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 19:14:50,970 - yfinance - ERROR - ['DEEPAKNTR.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 19:14:56,406 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 19:29:59,311 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 19:29:59,311 - yfinance - ERROR - ['HINDZINC.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 19:30:09,046 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 19:30:18,165 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 19:45:22,127 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 19:45:22,127 - yfinance - ERROR - ['AFFLE.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 19:45:30,599 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 19:45:39,319 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 20:00:47,158 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 20:00:47,158 - yfinance - ERROR - ['ADANIPORTS.NS']: TypeError("'NoneType' object is not subscriptable")
+2026-03-18 20:00:51,984 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 20:00:56,582 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 20:00:56,620 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 20:00:56,620 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 20:01:01,359 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 20:01:05,521 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 20:01:05,521 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 20:01:05,521 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 20:01:05,521 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 20:01:05,521 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 21:46:02,548 - main - INFO - 📊 Refreshing data...
+2026-03-18 21:46:02,555 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 21:46:02,555 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 21:46:14,775 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 21:46:26,119 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 21:46:36,692 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 21:46:46,862 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 21:46:58,513 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 21:47:10,562 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 21:47:17,668 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 21:47:17,646 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:47:17,669 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:47:23,074 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 21:47:28,998 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 21:47:28,999 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 21:47:29,001 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 21:47:29,001 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 21:47:29,001 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 21:52:28,996 - main - INFO - 📊 Refreshing data...
+2026-03-18 21:52:28,996 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 21:52:28,997 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 21:52:39,984 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 21:52:50,011 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 21:53:04,363 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 21:53:14,908 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 21:53:24,435 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 21:53:34,385 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 21:53:41,033 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:53:41,046 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 21:53:41,046 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:53:46,579 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 21:53:50,816 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 21:53:50,816 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 21:53:50,816 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 21:53:50,816 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 21:53:50,816 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 21:58:50,816 - main - INFO - 📊 Refreshing data...
+2026-03-18 21:58:50,816 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 21:58:50,816 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 21:59:03,081 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 21:59:13,196 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 21:59:22,094 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 21:59:32,796 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 21:59:41,016 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 21:59:49,230 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 21:59:53,542 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:59:53,546 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 21:59:53,546 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 21:59:58,349 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:00:01,380 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:00:01,380 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:00:01,380 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:00:01,380 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:00:01,380 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:02:49,372 - main - INFO - Shutting down...
+2026-03-18 22:03:02,764 - main - INFO - 🚀 Starting Unified Stock Platform...
+2026-03-18 22:03:02,764 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:03:02,764 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:03:02,764 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:03:11,907 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:03:20,210 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:03:28,231 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:03:36,471 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:03:45,150 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:03:53,479 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:03:59,218 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 22:04:00,144 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:04:00,184 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:04:00,184 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:04:04,848 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:04:08,113 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:04:08,114 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:04:08,114 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:04:08,114 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:04:08,114 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:09:08,109 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:09:08,109 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:09:08,109 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:09:16,695 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:09:24,973 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:09:33,612 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:09:42,138 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:09:50,520 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:09:58,516 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:10:03,247 - yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-18 22:10:03,982 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:10:03,997 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:10:03,998 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:10:08,790 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:10:12,050 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:10:12,050 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:10:12,050 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:10:12,050 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:10:12,050 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:30:38,932 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:30:38,934 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:30:38,934 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:30:47,460 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:30:56,296 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:31:05,598 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:31:14,447 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:31:22,717 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:31:31,421 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:31:35,806 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:31:35,813 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:31:35,814 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:31:41,165 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:31:44,309 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:31:44,309 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:31:44,309 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:31:44,309 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:31:44,309 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:36:44,309 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:36:44,311 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:36:44,311 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:36:53,401 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:37:02,635 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:37:11,075 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:37:19,985 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:37:28,789 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:37:37,155 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:37:41,672 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:37:41,715 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:37:41,715 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:37:46,169 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:37:49,608 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:37:49,609 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:37:49,609 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:37:49,609 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:37:49,609 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:42:49,610 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:42:49,610 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:42:49,610 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:42:59,300 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:43:08,247 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:43:17,180 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:43:25,947 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:43:35,104 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:43:43,726 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:43:48,554 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:43:48,620 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:43:48,621 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:43:53,580 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:43:57,139 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:43:57,139 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:43:57,140 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:43:57,140 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:43:57,140 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:48:57,143 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:48:57,145 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:48:57,146 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:49:06,715 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:49:15,512 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:49:24,399 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:49:33,323 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:49:41,980 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:49:50,923 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:49:55,763 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:49:55,779 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:49:55,779 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:50:00,321 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:50:03,864 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:50:03,864 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:50:03,864 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:50:03,864 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:50:03,864 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 22:55:03,866 - main - INFO - 📊 Refreshing data...
+2026-03-18 22:55:03,866 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 22:55:03,866 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 22:55:13,193 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 22:55:22,005 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 22:55:30,777 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 22:55:39,276 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 22:55:47,977 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 22:55:56,694 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 22:56:01,642 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:56:01,651 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 22:56:01,651 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 22:56:06,468 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 22:56:09,663 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 22:56:09,663 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 22:56:09,663 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 22:56:09,663 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 22:56:09,663 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 23:01:09,674 - main - INFO - 📊 Refreshing data...
+2026-03-18 23:01:09,677 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 23:01:09,677 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 23:01:18,738 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 23:01:27,250 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 23:01:35,663 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 23:01:44,239 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 23:01:52,639 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 23:02:00,977 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 23:02:05,389 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:02:05,443 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 23:02:05,444 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:02:10,162 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 23:02:13,166 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 23:02:13,166 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 23:02:13,166 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 23:02:13,166 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 23:02:13,166 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 23:07:13,167 - main - INFO - 📊 Refreshing data...
+2026-03-18 23:07:13,170 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 23:07:13,170 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 23:07:22,435 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 23:07:31,042 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 23:07:40,417 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 23:07:48,930 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 23:07:57,787 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 23:08:06,543 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 23:08:11,578 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:08:11,623 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 23:08:11,624 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:08:16,317 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 23:08:19,710 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 23:08:19,710 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 23:08:19,710 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 23:08:19,710 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 23:08:19,710 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 23:13:19,712 - main - INFO - 📊 Refreshing data...
+2026-03-18 23:13:19,715 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 23:13:19,715 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 23:13:30,448 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 23:13:39,240 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 23:13:47,823 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 23:13:56,311 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 23:14:04,837 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 23:14:13,610 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 23:14:17,867 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:14:17,942 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 23:14:17,943 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:14:22,697 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 23:14:26,353 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 23:14:26,353 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 23:14:26,353 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 23:14:26,354 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 23:14:26,354 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 23:20:00,432 - main - INFO - 📊 Refreshing data...
+2026-03-18 23:20:00,436 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 23:20:00,436 - services.technical_service - INFO - Processing chunk 1/8
+2026-03-18 23:20:08,795 - services.technical_service - INFO - Processing chunk 2/8
+2026-03-18 23:20:16,891 - services.technical_service - INFO - Processing chunk 3/8
+2026-03-18 23:20:24,996 - services.technical_service - INFO - Processing chunk 4/8
+2026-03-18 23:20:33,141 - services.technical_service - INFO - Processing chunk 5/8
+2026-03-18 23:20:41,189 - services.technical_service - INFO - Processing chunk 6/8
+2026-03-18 23:20:49,592 - services.technical_service - INFO - Processing chunk 7/8
+2026-03-18 23:20:54,550 - yfinance - ERROR - $TATAMOTORS.NS: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:20:54,551 - yfinance - ERROR - 
+1 Failed download:
+2026-03-18 23:20:54,554 - yfinance - ERROR - ['TATAMOTORS.NS']: possibly delisted; no price data found  (period=2d) (Yahoo error = "No data found, symbol may be delisted")
+2026-03-18 23:20:59,137 - services.technical_service - INFO - Processing chunk 8/8
+2026-03-18 23:21:02,402 - services.technical_service - INFO - Analyzed 0 stocks
+2026-03-18 23:21:02,403 - services.sentiment_service - INFO - Fetching news...
+2026-03-18 23:21:02,403 - services.confluence_engine - INFO - Generating confluence signals from 0 technical records...
+2026-03-18 23:21:02,403 - services.confluence_engine - INFO - Generated 0 confluence signals
+2026-03-18 23:21:02,403 - main - INFO - ✅ Generated 0 confluence signals
+2026-03-18 23:26:02,404 - main - INFO - 📊 Refreshing data...
+2026-03-18 23:26:02,407 - services.technical_service - INFO - Fetching data for 150 tickers...
+2026-03-18 23:26:02,407 - services.technical_service - INFO - Processing chunk 1/8

@@ -1,0 +1,238 @@
+app:
+  name: "GeoPolitical Stock Monitor - India"
+  version: "2.0.0"
+  refresh_interval: 300  # seconds
+  tech_refresh_interval: 180  # seconds (technical data refreshes faster)
+  debug: false
+
+news_sources:
+  rss_feeds:
+    - name: "Economic Times"
+      url: "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"
+    - name: "Business Standard"
+      url: "https://www.business-standard.com/rss/markets-106.rss"
+    - name: "Moneycontrol"
+      url: "https://www.moneycontrol.com/rss/latestnews.xml"
+    - name: "LiveMint"
+      url: "https://www.livemint.com/rss/markets"
+    - name: "Reuters India"
+      url: "https://feeds.reuters.com/reuters/INbusinessNews"
+    - name: "NDTV Profit"
+      url: "https://feeds.feedburner.com/ndtvprofit-latest"
+
+sentiment:
+  model: "finbert"  # options: vader, textblob, finbert
+  context_aware: true
+  thresholds:
+    strong_bullish: 0.5
+    weak_bullish: 0.15
+    strong_bearish: -0.5
+    weak_bearish: -0.15
+  india_context:
+    oil_price_impact: true
+    currency_impact: true
+  weights:
+    title: 0.6
+    description: 0.4
+
+sectors:
+  - name: "Banking & Finance"
+    keywords:
+      - "RBI"
+      - "bank"
+      - "NBFC"
+      - "interest rate"
+      - "repo rate"
+      - "credit"
+      - "loan"
+      - "NPA"
+      - "Basel"
+      - "liquidity"
+    stocks:
+      - "HDFCBANK"
+      - "ICICIBANK"
+      - "SBIN"
+      - "KOTAKBANK"
+      - "AXISBANK"
+      - "BANDHANBNK"
+      - "FEDERALBNK"
+
+  - name: "IT & Technology"
+    keywords:
+      - "IT"
+      - "software"
+      - "technology"
+      - "tech"
+      - "digital"
+      - "AI"
+      - "cloud"
+      - "cybersecurity"
+      - "visa"
+      - "H1B"
+      - "US outsourcing"
+    stocks:
+      - "TCS"
+      - "INFY"
+      - "WIPRO"
+      - "HCLTECH"
+      - "TECHM"
+      - "MPHASIS"
+      - "LTIM"
+
+  - name: "Energy & Oil"
+    keywords:
+      - "oil"
+      - "crude"
+      - "OPEC"
+      - "energy"
+      - "petroleum"
+      - "gas"
+      - "LNG"
+      - "refinery"
+      - "Brent"
+      - "WTI"
+    stocks:
+      - "RELIANCE"
+      - "ONGC"
+      - "IOC"
+      - "BPCL"
+      - "GAIL"
+      - "OIL"
+
+  - name: "Defense & Aerospace"
+    keywords:
+      - "defense"
+      - "defence"
+      - "military"
+      - "army"
+      - "navy"
+      - "air force"
+      - "weapon"
+      - "missile"
+      - "border"
+      - "war"
+      - "procurement"
+    stocks:
+      - "HAL"
+      - "BEL"
+      - "BHEL"
+      - "MIDHANI"
+      - "PARAS"
+
+  - name: "Pharmaceuticals"
+    keywords:
+      - "pharma"
+      - "drug"
+      - "medicine"
+      - "FDA"
+      - "USFDA"
+      - "clinical trial"
+      - "generic"
+      - "API"
+      - "vaccine"
+    stocks:
+      - "SUNPHARMA"
+      - "DRREDDY"
+      - "CIPLA"
+      - "DIVISLAB"
+      - "AUROPHARMA"
+      - "LUPIN"
+
+  - name: "Automobiles"
+    keywords:
+      - "auto"
+      - "car"
+      - "EV"
+      - "electric vehicle"
+      - "automobile"
+      - "vehicle"
+      - "two-wheeler"
+      - "SUV"
+      - "sales"
+    stocks:
+      - "MARUTI"
+      - "TATAMOTORS"
+      - "M&M"
+      - "BAJAJ-AUTO"
+      - "HEROMOTOCO"
+      - "EICHERMOT"
+
+  - name: "Infrastructure & Construction"
+    keywords:
+      - "infrastructure"
+      - "construction"
+      - "roads"
+      - "highways"
+      - "smart city"
+      - "cement"
+      - "steel"
+      - "government contract"
+    stocks:
+      - "LARSEN"
+      - "ULTRACEMCO"
+      - "ADANIPORTS"
+      - "DLF"
+      - "GODREJPROP"
+
+  - name: "FMCG & Consumer"
+    keywords:
+      - "FMCG"
+      - "consumer"
+      - "retail"
+      - "inflation"
+      - "rural"
+      - "urban"
+      - "GST"
+      - "household"
+    stocks:
+      - "HINDUNILVR"
+      - "ITC"
+      - "NESTLEIND"
+      - "BRITANNIA"
+      - "DABUR"
+      - "MARICO"
+
+prediction:
+  min_confidence: 0.3
+  backtest_enabled: true
+  time_horizons:
+    intraday:
+      days: 1
+      label: "Intraday"
+    one_week:
+      days: 5
+      label: "1 Week"
+    one_month:
+      days: 20
+      label: "1 Month"
+
+alerts:
+  enabled: true
+  severity_thresholds:
+    high: 0.7
+    medium: 0.5
+    low: 0.3
+  max_alerts: 20
+  keywords:
+    - "breaking"
+    - "war"
+    - "sanctions"
+    - "RBI cut"
+    - "rate hike"
+    - "emergency"
+    - "crash"
+    - "surge"
+    - "ban"
+    - "attack"
+    - "collapse"
+    - "record high"
+    - "record low"
+    - "US visa"
+    - "OPEC"
+    - "Modi"
+    - "budget"
+    - "GST"
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
