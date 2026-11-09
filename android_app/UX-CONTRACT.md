@@ -36,6 +36,15 @@
 - Sector Map visualizes that eligible flow dataset. Tile area is proportional to estimated turnover and colour represents turnover-weighted percentage change; it retains textual coverage, freshness, and empty states.
 - India VIX is supplied by the macro quote batch as `^INDIAVIX`, displays value, percentage change, quote time, and a threshold-based volatility regime. The approximate one-day move is `VIX / √252`; it is contextual volatility, not a forecasted market direction.
 
+## Kite authentication and fallback
+
+- The Kite API key and API secret are fixed server configuration and must never be requested, stored, or rendered by the Android app. The daily user action is Zerodha login, which exchanges a short-lived request token for an access token on the backend.
+- Home always reserves a Broker Session card. It reports checking, connected, login-required, server-setup, or status-offline in text without moving the market controls beneath it.
+- When Kite is configured but not authenticated, an app-owned dialog may request `Connect Kite` once per Asia/Kolkata calendar day. `Later` and Escape dismiss only that dialog; the Home card remains available for reconnection.
+- The dialog traps focus while open, restores focus when dismissed, and contains no password, API-key, or API-secret input. Returning from the external Zerodha login rechecks status when the app becomes visible.
+- Kite status failures, skipped login, and incomplete setup never block native Yahoo Finance refresh, clear saved market content, or disable navigation. The fallback remains named in both the card and dialog.
+- The backend invalidates its in-memory Kite access token when the India calendar day changes. The app also detects that boundary while foregrounded and rechecks on resume.
+
 ## Verification
 
 - Static regression: `node tools/verify_regressions.mjs`.

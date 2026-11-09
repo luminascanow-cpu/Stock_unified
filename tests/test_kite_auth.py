@@ -76,6 +76,17 @@ class KiteAuthServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(client.headers, {"X-Kite-Version": "3"})
         self.assertNotEqual(client.form["checksum"], "private-secret")
 
+    async def test_token_expires_on_the_next_india_calendar_day(self):
+        await self.service.exchange_request_token("request-token", client=FakeClient())
+        self.service._session_day = "2000-01-01"
+
+        result = self.service.status()
+
+        self.assertFalse(result["authenticated"])
+        self.assertIsNone(result["authenticated_at"])
+        self.assertIsNone(result["session_day"])
+        self.assertIsNone(self.service.access_token)
+
 
 if __name__ == "__main__":
     unittest.main()

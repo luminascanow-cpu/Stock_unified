@@ -42,6 +42,8 @@ const html = String.raw`<!doctype html>
       overflow-x: hidden;
     }
 
+    body.kite-dialog-open { overflow: hidden; }
+
     .app {
       min-height: 100dvh;
       background: linear-gradient(180deg, #0b1321 0%, #08101d 100%);
@@ -1216,6 +1218,141 @@ const html = String.raw`<!doctype html>
       font: 900 13px/1.2 "JetBrains Mono", "SFMono-Regular", monospace;
     }
 
+    .kite-session-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 94px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--teal);
+      background:
+        linear-gradient(90deg, rgba(54, 255, 196, 0.07), transparent 52%),
+        var(--surface-low);
+    }
+
+    .kite-session-copy {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .kite-session-state {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      margin-left: 6px;
+      padding: 0 8px;
+      border: 1px solid rgba(197, 198, 204, 0.32);
+      color: var(--muted);
+      font: 900 9px/1 "JetBrains Mono", "SFMono-Regular", monospace;
+      white-space: nowrap;
+    }
+
+    .kite-session-state.connected {
+      border-color: rgba(54, 255, 196, 0.5);
+      color: var(--teal);
+    }
+
+    .kite-session-state.warning {
+      border-color: rgba(255, 214, 10, 0.5);
+      color: var(--yellow);
+    }
+
+    .kite-session-state.error {
+      border-color: rgba(231, 59, 62, 0.55);
+      color: #ffb3ae;
+    }
+
+    .kite-session-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .kite-action {
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--teal);
+      background: var(--teal);
+      color: var(--black);
+      font: 900 10px/1 "JetBrains Mono", "SFMono-Regular", monospace;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .kite-action.secondary {
+      border-color: var(--line);
+      background: transparent;
+      color: var(--text);
+    }
+
+    .kite-action:disabled {
+      cursor: wait;
+      opacity: 0.55;
+      border-color: var(--line);
+      background: var(--surface-higher);
+      color: var(--muted);
+    }
+
+    .kite-action:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 3px;
+    }
+
+    .kite-action:active:not(:disabled) { transform: translateY(1px); }
+
+    .kite-auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(6, 14, 28, 0.9);
+      backdrop-filter: blur(8px);
+    }
+
+    .kite-auth-overlay[hidden] { display: none; }
+
+    .kite-auth-dialog {
+      width: min(100%, 360px);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-top: 3px solid var(--teal);
+      background: var(--surface-low);
+      box-shadow: 0 18px 52px rgba(0, 0, 0, 0.48);
+    }
+
+    .kite-auth-dialog h2 {
+      margin: 8px 0 0;
+      color: #fff;
+      font: 900 18px/1.3 "JetBrains Mono", "SFMono-Regular", monospace;
+    }
+
+    .kite-auth-dialog p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .kite-auth-note {
+      padding: 10px;
+      border-left: 2px solid var(--yellow);
+      background: rgba(255, 214, 10, 0.05);
+    }
+
+    .kite-auth-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
     .discovery-headline {
       margin: 5px 0 0;
       color: var(--muted);
@@ -1936,6 +2073,9 @@ const html = String.raw`<!doctype html>
       .source-row, .alert-top { align-items: flex-start; }
       .source-row { flex-wrap: wrap; }
       .alert-card { padding: 13px; }
+      .kite-session-card { grid-template-columns: minmax(0, 1fr); }
+      .kite-session-actions { justify-content: flex-start; }
+      .kite-auth-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 349px) {
@@ -1981,6 +2121,18 @@ const html = String.raw`<!doctype html>
   </style>
 </head>
 <body>
+  <div class="kite-auth-overlay" id="kiteAuthOverlay" hidden>
+    <section class="kite-auth-dialog" id="kiteAuthDialog" role="dialog" aria-modal="true" aria-labelledby="kiteAuthTitle" aria-describedby="kiteAuthDescription">
+      <p class="section-label">Daily broker session</p>
+      <h2 id="kiteAuthTitle">KITE LOGIN REQUIRED</h2>
+      <p id="kiteAuthDescription">Kite requires a fresh access token each day. Sign in with Zerodha to connect today; the API key and secret stay on the server.</p>
+      <p class="kite-auth-note">Yahoo Finance remains active while Kite is disconnected, so market screens continue to work.</p>
+      <div class="kite-auth-dialog-actions">
+        <button class="kite-action secondary" id="kiteLaterButton" type="button" onclick="closeKiteAuthPrompt()">Later</button>
+        <button class="kite-action" id="kiteDialogConnectButton" type="button" onclick="startKiteLogin()">Connect Kite</button>
+      </div>
+    </section>
+  </div>
   <div class="collecting-overlay" id="collectingOverlay" role="status" aria-live="polite" aria-hidden="true">
     <div class="collecting-panel">
       <div class="collecting-grid" aria-hidden="true"></div>
@@ -1998,6 +2150,16 @@ const html = String.raw`<!doctype html>
     <main>
       <section class="view active" data-view="home">
         <div class="stack">
+          <article class="kite-session-card" aria-labelledby="kiteSessionTitle">
+            <div>
+              <p class="section-label" id="kiteSessionTitle">Broker session <span class="kite-session-state" id="kiteSessionState">CHECKING</span></p>
+              <p class="kite-session-copy" id="kiteSessionCopy" role="status" aria-live="polite">Checking today’s Kite connection. Yahoo Finance remains active.</p>
+            </div>
+            <div class="kite-session-actions">
+              <button class="kite-action secondary" id="kiteRetryButton" type="button" onclick="checkKiteSession({offerDailyPrompt: true})" hidden>Recheck</button>
+              <button class="kite-action" id="kiteConnectButton" type="button" onclick="startKiteLogin()" disabled>Connect Kite</button>
+            </div>
+          </article>
           <div class="home-grid stack">
             <article class="panel panel-pad hero">
               <div class="scanline"></div>
@@ -2254,6 +2416,9 @@ const html = String.raw`<!doctype html>
     const HIDDEN_STOCKS_KEY = "stockUnifiedHiddenStocks";
     const DAILY_CLOSES_KEY = "stockUnifiedDailyClosesV1";
     const LAST_SUCCESSFUL_SNAPSHOT_KEY = "stockUnifiedLastSuccessfulSnapshotV1";
+    const KITE_PROMPT_DAY_KEY = "stockUnifiedKitePromptDayV1";
+    const KITE_STATUS_URL = "https://stock-monitor-pro.onrender.com/auth/kite/status";
+    const KITE_LOGIN_URL = "https://stock-monitor-pro.onrender.com/auth/kite/login";
     const SNAPSHOT_VERSION = 1;
     const MARKET_OPEN_REFRESH_MS = 30000;
     const MARKET_CLOSED_REFRESH_MS = 300000;
@@ -2308,6 +2473,10 @@ const html = String.raw`<!doctype html>
     let latestDiscoverySuggestions = [];
     let collectingSequence = 0;
     let nativeRequestSequence = 0;
+    let kiteStatusRequestSequence = 0;
+    let kiteStatusAbortController = null;
+    let kitePromptPreviousFocus = null;
+    let lastObservedKiteDay = null;
     const collectingRequests = new Set();
     const nativePending = new Map();
     let customStockListExpanded = false;
@@ -3851,6 +4020,161 @@ const html = String.raw`<!doctype html>
       return callNativeAsync(method);
     }
 
+    function istDayKey(date = new Date()) {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date);
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return values.year + "-" + values.month + "-" + values.day;
+    }
+
+    function readKitePromptDay() {
+      try {
+        return localStorage.getItem(KITE_PROMPT_DAY_KEY) || "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function rememberKitePromptDay() {
+      try {
+        localStorage.setItem(KITE_PROMPT_DAY_KEY, istDayKey());
+      } catch (_error) {
+        // The status card remains available when WebView storage is unavailable.
+      }
+    }
+
+    function updateKiteSessionCard(state, message) {
+      kiteSessionState.textContent = state.label;
+      kiteSessionState.className = "kite-session-state" + (state.tone ? " " + state.tone : "");
+      kiteSessionCopy.textContent = message;
+      kiteConnectButton.hidden = !state.canConnect;
+      kiteConnectButton.disabled = state.checking;
+      kiteRetryButton.hidden = !state.canRetry;
+      kiteRetryButton.disabled = state.checking;
+    }
+
+    function closeKiteAuthPrompt({restoreFocus = true} = {}) {
+      if (kiteAuthOverlay.hidden) return;
+      kiteAuthOverlay.hidden = true;
+      document.body.classList.remove("kite-dialog-open");
+      appShell.inert = false;
+      appShell.removeAttribute("aria-hidden");
+      if (restoreFocus && kitePromptPreviousFocus && typeof kitePromptPreviousFocus.focus === "function") {
+        kitePromptPreviousFocus.focus();
+      }
+      kitePromptPreviousFocus = null;
+    }
+
+    function showKiteAuthPrompt() {
+      if (!kiteAuthOverlay.hidden || readKitePromptDay() === istDayKey()) return;
+      rememberKitePromptDay();
+      kitePromptPreviousFocus = document.activeElement;
+      kiteAuthOverlay.hidden = false;
+      document.body.classList.add("kite-dialog-open");
+      appShell.inert = true;
+      appShell.setAttribute("aria-hidden", "true");
+      requestAnimationFrame(() => kiteDialogConnectButton.focus());
+    }
+
+    function startKiteLogin() {
+      rememberKitePromptDay();
+      closeKiteAuthPrompt({restoreFocus: false});
+      window.location.assign(KITE_LOGIN_URL);
+    }
+
+    async function checkKiteSession({offerDailyPrompt = false} = {}) {
+      const requestSequence = ++kiteStatusRequestSequence;
+      if (kiteStatusAbortController) kiteStatusAbortController.abort();
+      const requestController = new AbortController();
+      kiteStatusAbortController = requestController;
+      const timeout = setTimeout(() => requestController.abort(), 10000);
+      updateKiteSessionCard(
+        {label: "CHECKING", tone: "", canConnect: true, canRetry: false, checking: true},
+        "Checking today’s Kite connection. Yahoo Finance remains active."
+      );
+
+      try {
+        const response = await fetch(KITE_STATUS_URL, {
+          method: "GET",
+          headers: {"Accept": "application/json"},
+          cache: "no-store",
+          signal: requestController.signal
+        });
+        if (!response.ok) throw new Error("Kite status HTTP " + response.status);
+        const status = await response.json();
+        if (requestSequence !== kiteStatusRequestSequence) return;
+
+        if (status.authenticated) {
+          updateKiteSessionCard(
+            {label: "CONNECTED", tone: "connected", canConnect: false, canRetry: false, checking: false},
+            "Kite is authenticated for today. The daily broker login is complete."
+          );
+          closeKiteAuthPrompt({restoreFocus: false});
+          return;
+        }
+
+        if (!status.configured) {
+          updateKiteSessionCard(
+            {label: "SERVER SETUP", tone: "error", canConnect: false, canRetry: true, checking: false},
+            "Kite credentials are not configured on the backend. Yahoo Finance remains active."
+          );
+          return;
+        }
+
+        updateKiteSessionCard(
+          {label: "LOGIN REQUIRED", tone: "warning", canConnect: true, canRetry: false, checking: false},
+          "Kite needs today’s Zerodha login. Yahoo Finance remains active until it is connected."
+        );
+        if (offerDailyPrompt) showKiteAuthPrompt();
+      } catch (error) {
+        if (requestSequence !== kiteStatusRequestSequence) return;
+        updateKiteSessionCard(
+          {label: "STATUS OFFLINE", tone: "error", canConnect: false, canRetry: true, checking: false},
+          "Kite status is temporarily unavailable. Yahoo Finance remains active; recheck when online."
+        );
+      } finally {
+        clearTimeout(timeout);
+        if (kiteStatusAbortController === requestController) {
+          kiteStatusAbortController = null;
+        }
+      }
+    }
+
+    function handleKiteDialogKeydown(event) {
+      if (kiteAuthOverlay.hidden) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeKiteAuthPrompt();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...kiteAuthDialog.querySelectorAll("button:not([disabled]):not([hidden])")];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    function startKiteDayWatcher() {
+      lastObservedKiteDay = istDayKey();
+      setInterval(() => {
+        const currentDay = istDayKey();
+        if (currentDay === lastObservedKiteDay) return;
+        lastObservedKiteDay = currentDay;
+        checkKiteSession({offerDailyPrompt: true});
+      }, 60000);
+    }
+
     function setStatus(text, isLive = false) {
       keyState.textContent = text;
       engineStatus.textContent = text;
@@ -4615,6 +4939,7 @@ const html = String.raw`<!doctype html>
           refreshTimer = null;
           return;
         }
+        checkKiteSession({offerDailyPrompt: true});
         syncOnce();
       });
     }
@@ -4632,9 +4957,13 @@ const html = String.raw`<!doctype html>
       updateStockInputClearButton();
     });
 
+    kiteAuthDialog.addEventListener("keydown", handleKiteDialogKeydown);
+
     renderCustomStockChips();
     renderHiddenStockControl();
     restoreLastSuccessfulSnapshot();
+    checkKiteSession({offerDailyPrompt: true});
+    startKiteDayWatcher();
     startLiveSync();
   </script>
 </body>

@@ -94,6 +94,7 @@ Matrix custom-stock management stays compact: the saved active count remains vis
 ### Forms and overlays
 
 The ticker input uses app-owned validation text. The app does not use browser alert, confirm, or prompt dialogs. Market collection uses a bounded app-owned status overlay with a stable technical scan animation, descriptive live text, and a reduced-motion state.
+Daily Kite reauthentication uses the same terminal language: a stable Home status card owns checking, connected, login-required, server-setup, and offline states. An app-owned modal may request the daily Zerodha login once per India calendar day; it contains no credential fields, traps focus, supports Escape/Later, and keeps Yahoo Finance explicitly available as the non-blocking fallback.
 
 ### Iconography
 

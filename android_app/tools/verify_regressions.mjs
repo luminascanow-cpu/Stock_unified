@@ -126,6 +126,14 @@ const safeExternalUrl = new Function(
 assert(safeExternalUrl("https://example.com/report").startsWith("https://"), "HTTPS article links must remain usable");
 assert(safeExternalUrl("javascript:alert(1)") === "#", "executable URL schemes must be rejected");
 
+const istDayKey = new Function(
+  `${functionSource("istDayKey", "readKitePromptDay")}; return istDayKey;`
+)();
+assert(
+  istDayKey(new Date("2026-11-09T19:00:00.000Z")) === "2026-11-10",
+  "daily Kite prompts must use the India calendar day"
+);
+
 const mergeTechnicalRows = new Function(
   `
     ${functionSource("normalizeCustomSymbol", "knownMatrixSymbols")}
@@ -308,6 +316,13 @@ assert(source.includes('"Update delayed · showing saved news"'), "news failures
 assert(source.includes('id="niftyPreviousClose"'), "Home must expose the previous close as a dedicated value");
 assert(source.includes('id="niftySessionMove"'), "Home must expose the full day move as a dedicated value");
 assert(source.includes('id="sectorFlowTitle">SECTORS IN FOCUS'), "Home must expose the sectors-in-focus panel");
+assert(source.includes('id="kiteSessionTitle">Broker session'), "Home must reserve a stable Kite session card");
+assert(source.includes('id="kiteAuthDialog" role="dialog" aria-modal="true"'), "daily Kite login must use an app-owned accessible dialog");
+assert(source.includes('KITE_PROMPT_DAY_KEY = "stockUnifiedKitePromptDayV1"'), "the daily Kite prompt must persist only its last India calendar day");
+assert(source.includes('checkKiteSession({offerDailyPrompt: true});\n        syncOnce();'), "returning from Zerodha login must recheck Kite before market sync");
+assert(source.includes("Yahoo Finance remains active while Kite is disconnected"), "the daily login dialog must name the non-blocking fallback");
+assert(!source.includes('type="password"'), "the Android asset must never request a broker password or API secret");
+assert(!source.includes("KITE_API_SECRET"), "the Kite API secret must remain server-side");
 const removedMoneyRotationMarkers = [
   "money rotation",
   "money-rotation",

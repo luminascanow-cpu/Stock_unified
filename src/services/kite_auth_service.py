@@ -2,7 +2,7 @@ import hashlib
 import os
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
@@ -14,12 +14,14 @@ class KiteAuthError(RuntimeError):
 class KiteAuthService:
     login_endpoint = "https://kite.zerodha.com/connect/login"
     token_endpoint = "https://api.kite.trade/session/token"
+    india_timezone = timezone(timedelta(hours=5, minutes=30))
 
     def __init__(self, state_ttl_seconds: int = 600):
         self.state_ttl_seconds = state_ttl_seconds
         self._pending_states: Dict[str, float] = {}
         self._access_token: Optional[str] = None
         self._session: Dict[str, Any] = {}
+        self._session_day: Optional[str] = None
 
     @property
     def api_key(self) -> str:
@@ -31,6 +33,7 @@ class KiteAuthService:
 
     @property
     def access_token(self) -> Optional[str]:
+        self._expire_stale_session()
         return self._access_token
 
     def is_configured(self) -> bool:
@@ -110,6 +113,7 @@ class KiteAuthService:
 
         authenticated_at = datetime.now(timezone.utc).isoformat()
         self._access_token = access_token
+        self._session_day = self._today_in_india()
         self._session = {
             "authenticated": True,
             "authenticated_at": authenticated_at,
@@ -119,13 +123,24 @@ class KiteAuthService:
         return self.status()
 
     def status(self) -> Dict[str, Any]:
+        self._expire_stale_session()
         return {
             "configured": self.is_configured(),
             "authenticated": bool(self._access_token),
             "authenticated_at": self._session.get("authenticated_at"),
             "user_id": self._session.get("user_id"),
+            "session_day": self._session_day,
             "requires_daily_login": True,
         }
+
+    def _today_in_india(self) -> str:
+        return datetime.now(self.india_timezone).date().isoformat()
+
+    def _expire_stale_session(self) -> None:
+        if self._access_token and self._session_day != self._today_in_india():
+            self._access_token = None
+            self._session = {}
+            self._session_day = None
 
     def _discard_expired_states(self) -> None:
         now = time.time()
