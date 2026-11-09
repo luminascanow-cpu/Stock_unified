@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from ..services.news_service import NewsService
 from ..services.advanced_sentiment import advanced_sentiment_service
 from ..services.nse_service import nse_service, market_hours_service
 from ..services.technical_analysis_service import technical_service, TechnicalData
+from ..services.news_matching import contains_any
 from ..utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,93 @@ SIGNAL_SCORE = {
     'SELL': -0.5,
     'STRONG_SELL': -1.0,
 }
+
+MARKET_EVENTS = [
+    {
+        "id": "rbi-mpc-2026-08",
+        "title": "RBI MPC policy decision",
+        "date": "2026-08-05",
+        "category": "Rates",
+        "impact": "high",
+        "note": "Policy decision can move banks, NBFCs, INR, bonds, and rate-sensitive stocks.",
+    },
+    {
+        "id": "india-cpi-2026-07",
+        "title": "India CPI for July 2026",
+        "date": "2026-08-12",
+        "category": "Inflation",
+        "impact": "high",
+        "note": "Domestic inflation can reset RBI expectations and move banks, FMCG, INR, and bond yields.",
+    },
+    {
+        "id": "us-cpi-2026-07",
+        "title": "U.S. CPI for July 2026",
+        "date": "2026-08-12",
+        "category": "Global macro",
+        "impact": "high",
+        "note": "U.S. inflation can move Nasdaq, USD/INR, gold, IT stocks, and broader risk appetite.",
+    },
+    {
+        "id": "jackson-hole-2026",
+        "title": "Jackson Hole Symposium begins",
+        "date": "2026-08-27",
+        "category": "Central banks",
+        "impact": "medium",
+        "note": "Central-bank remarks can reset rate expectations, liquidity assumptions, and global risk tone.",
+    },
+    {
+        "id": "fomc-2026-09",
+        "title": "FOMC policy decision",
+        "date": "2026-09-16",
+        "category": "Global rates",
+        "impact": "high",
+        "note": "Fed decision and projections can move global equities, USD/INR, gold, and foreign flows.",
+    },
+    {
+        "id": "us-cpi-2026-08",
+        "title": "U.S. CPI for August 2026",
+        "date": "2026-09-11",
+        "category": "Global macro",
+        "impact": "high",
+        "note": "U.S. inflation can shift Fed pricing and spill into Indian IT, metals, and risk assets.",
+    },
+    {
+        "id": "fomc-2026-10",
+        "title": "FOMC policy decision",
+        "date": "2026-10-28",
+        "category": "Global rates",
+        "impact": "high",
+        "note": "Fed rates guidance can affect foreign flows, currency pressure, and valuation multiples.",
+    },
+    {
+        "id": "us-cpi-2026-09",
+        "title": "U.S. CPI for September 2026",
+        "date": "2026-10-14",
+        "category": "Global macro",
+        "impact": "high",
+        "note": "A major inflation print ahead of year-end Fed pricing and global asset allocation.",
+    },
+]
+
+
+def get_upcoming_market_events(now: Optional[datetime] = None, limit: int = 8) -> List[Dict]:
+    today = (now or datetime.now()).date()
+    upcoming = []
+
+    for event in MARKET_EVENTS:
+        event_date = datetime.strptime(event["date"], "%Y-%m-%d").date()
+        days_until = (event_date - today).days
+        if days_until < 0:
+            continue
+
+        item = dict(event)
+        item["days_until"] = days_until
+        item["alert_on"] = (event_date - timedelta(days=1)).isoformat()
+        item["source"] = "Built-in major market calendar"
+        upcoming.append(item)
+
+    upcoming.sort(key=lambda item: item["date"])
+    return upcoming[:limit]
 
 
 def compute_confluence(
@@ -113,12 +202,14 @@ class PredictionEngineV2:
         self.backtest_engine = BacktestEngine()
         self.alerts: List[Alert] = []
         self.prediction_config = config.prediction
+        self._refresh_task: Optional[asyncio.Task] = None
+        self._news_task: Optional[asyncio.Task] = None
+        self._news_cache: List[NewsArticle] = []
+        self._news_updated_at: Optional[datetime] = None
 
     async def generate_dashboard_data(self) -> DashboardData:
-        import asyncio
-
         # Run news + technical fetch in parallel
-        news_task = self.news_service.fetch_all_news()
+        news_task = self.refresh_news()
         tech_task = technical_service.fetch_all()
         nifty_task = technical_service.get_nifty()
 
@@ -136,15 +227,12 @@ class PredictionEngineV2:
         if isinstance(nifty, Exception):
             nifty = None
 
-        # Sentiment analysis on news
-        analyzed_news = []
-        for article in news:
-            analyzed = advanced_sentiment_service.analyze_article(article)
-            analyzed_news.append(analyzed)
+        analyzed_news = news
 
         sector_analysis = await self.analyze_sectors(analyzed_news, tech_map)
         top_predictions = self.get_top_predictions(sector_analysis)
-        alerts = self.generate_alerts(analyzed_news, sector_analysis)
+        upcoming_events = get_upcoming_market_events()
+        alerts = self.generate_event_alerts(upcoming_events) + self.generate_alerts(analyzed_news, sector_analysis)
 
         # Record for backtest
         for pred in top_predictions:
@@ -165,6 +253,7 @@ class PredictionEngineV2:
             nifty=nifty,
             market_summary=market_summary,
             technical_updated=datetime.now().strftime('%H:%M:%S'),
+            upcoming_events=upcoming_events,
         )
 
     async def analyze_sectors(
@@ -253,6 +342,7 @@ class PredictionEngineV2:
             price_info=None,
             # Technical fields
             ltp=tech.ltp if tech else None,
+            change_percent=tech.change_percent if tech else None,
             velocity=tech.velocity if tech else None,
             ac=tech.ac if tech else None,
             psar_af=tech.psar_af if tech else None,
@@ -271,7 +361,7 @@ class PredictionEngineV2:
         filtered = []
         for article in news:
             text = (article.title + ' ' + article.description).lower()
-            if any(kw.lower() in text for kw in keywords):
+            if contains_any(text, keywords):
                 filtered.append(article)
                 if keywords:
                     article.affected_sectors.append(keywords[0])
@@ -303,6 +393,26 @@ class PredictionEngineV2:
             reverse=True
         )
         return all_preds
+
+    def generate_event_alerts(self, upcoming_events: List[Dict]) -> List[Alert]:
+        alerts = []
+
+        for event in upcoming_events:
+            if event.get("days_until") != 1:
+                continue
+
+            alert = Alert(
+                id=hashlib.md5(f"market-event:{event['id']}:{event['date']}".encode()).hexdigest()[:8],
+                timestamp=datetime.now(),
+                title=f"Event tomorrow: {event['title']}",
+                message=f"{event['date']} | {event['note']}",
+                severity="high" if event.get("impact") == "high" else "medium",
+                related_sectors=[event.get("category", "Market event")],
+                related_stocks=[],
+            )
+            alerts.append(alert)
+
+        return alerts
 
     def generate_alerts(self, news: List[NewsArticle], sector_analysis: List[SectorAnalysis]) -> List[Alert]:
         alerts = []
@@ -355,7 +465,42 @@ class PredictionEngineV2:
         return alerts
 
     async def refresh_data(self) -> DashboardData:
-        return await self.generate_dashboard_data()
+        if self._refresh_task and not self._refresh_task.done():
+            return await asyncio.shield(self._refresh_task)
+        self._refresh_task = asyncio.create_task(self.generate_dashboard_data())
+        try:
+            return await asyncio.shield(self._refresh_task)
+        finally:
+            if self._refresh_task and self._refresh_task.done():
+                self._refresh_task = None
+
+    async def refresh_news(self, force: bool = False) -> List[NewsArticle]:
+        if (
+            not force
+            and self._news_cache
+            and self._news_updated_at
+            and (datetime.now() - self._news_updated_at).total_seconds() < 45
+        ):
+            return list(self._news_cache)
+        if self._news_task and not self._news_task.done():
+            return await asyncio.shield(self._news_task)
+        self._news_task = asyncio.create_task(self._refresh_news_once())
+        try:
+            return await asyncio.shield(self._news_task)
+        finally:
+            if self._news_task and self._news_task.done():
+                self._news_task = None
+
+    async def _refresh_news_once(self) -> List[NewsArticle]:
+        articles = await self.news_service.fetch_all_news()
+        analyzed = await asyncio.to_thread(
+            advanced_sentiment_service.analyze_articles,
+            articles,
+        )
+        if analyzed:
+            self._news_cache = analyzed
+            self._news_updated_at = datetime.now()
+        return list(self._news_cache)
 
 
 prediction_engine_v2 = PredictionEngineV2()

@@ -19,13 +19,16 @@ cd ~/Desktop/stock_unified
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 ```
+
+Market prices are sourced from Yahoo Finance, so no broker token is required for live technical data. Set `NEWS_API_KEY` in `.env` only if you want the optional NewsAPI feed in addition to RSS sources.
 
 ## Run
 
 ```bash
 # Start server
-python3 main.py
+DASHBOARD_PORT=8000 python3 run.py
 
 # CLI usage
 python3 cli.py --refresh --sectors --alerts
@@ -41,11 +44,12 @@ python3 cli.py --refresh --sectors --alerts
 | `GET /api/news` | Latest news |
 | `GET /api/sectors` | Sector analysis |
 | `GET /api/alerts` | Active alerts |
+| `GET /api/broker/status` | Check current market data source |
 
 ## Config
 
 Edit `config.yaml` for:
 - Ticker lists
 - Sector mappings
-- API keys (NewsAPI, etc.)
+- Optional API keys (NewsAPI, etc.)
 - Refresh intervals

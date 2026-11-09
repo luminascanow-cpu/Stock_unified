@@ -9,6 +9,7 @@ import json
 import io
 import csv
 import os
+import logging
 
 from ..services.prediction_engine_v2 import prediction_engine_v2
 from ..services.nse_service import nse_service, market_hours_service
@@ -20,19 +21,39 @@ from ..utils.config import config
 
 prediction_engine = prediction_engine_v2
 dashboard_data: DashboardData = None
+news_data = []
 websocket_connections: List[WebSocket] = []
+logger = logging.getLogger(__name__)
 
 portfolio_data: List[dict] = []
 watchlist: List[str] = []
 fcm_tokens: Dict[str, dict] = {}
 
 
+async def init_data_task():
+    global dashboard_data
+    try:
+        dashboard_data = await prediction_engine.refresh_data()
+    except Exception as e:
+        logger.error("Initial data load failed: %s", e)
+
+
+async def init_news_task():
+    global news_data
+    try:
+        news_data = await prediction_engine.refresh_news(force=True)
+    except Exception as e:
+        logger.error("Initial news load failed: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global dashboard_data
-    dashboard_data = await prediction_engine.refresh_data()
+    asyncio.create_task(init_data_task())
+    asyncio.create_task(init_news_task())
     
     asyncio.create_task(periodic_refresh())
+    asyncio.create_task(periodic_news_refresh())
     asyncio.create_task(websocket_broadcast())
     
     market_hours_scheduler.start()
@@ -48,9 +69,25 @@ async def periodic_refresh():
         await asyncio.sleep(config.app.get('refresh_interval', 300))
         
         if market_hours_service.should_run_scheduler():
-            dashboard_data = await prediction_engine.refresh_data()
-            logger = __import__('logging').getLogger(__name__)
-            logger.info("Data refreshed during market hours")
+            try:
+                dashboard_data = await prediction_engine.refresh_data()
+                await asyncio.gather(
+                    *(alert_manager.process_alert(alert) for alert in dashboard_data.alerts),
+                    return_exceptions=True,
+                )
+                logger.info("Data refreshed during market hours")
+            except Exception as e:
+                logger.error("Periodic market refresh failed: %s", e)
+
+
+async def periodic_news_refresh():
+    global news_data
+    while True:
+        await asyncio.sleep(config.app.get('news_refresh_interval', 60))
+        try:
+            news_data = await prediction_engine.refresh_news(force=True)
+        except Exception as e:
+            logger.error("Periodic news refresh failed: %s", e)
 
 
 async def websocket_broadcast():
@@ -88,16 +125,23 @@ app = create_app()
 async def get_dashboard():
     global dashboard_data
     if dashboard_data is None:
-        dashboard_data = await prediction_engine.refresh_data()
+        raise HTTPException(status_code=503, detail="Market data is warming up")
     return dashboard_data
 
 
 @app.get("/api/news")
 async def get_news():
-    global dashboard_data
+    global dashboard_data, news_data
+    if news_data:
+        return news_data
     if dashboard_data:
         return dashboard_data.latest_news
     return []
+
+
+@app.get("/api/news/status")
+async def get_news_status():
+    return prediction_engine.news_service.last_fetch_status
 
 
 @app.get("/api/sectors")
@@ -587,6 +631,22 @@ def get_dashboard_html() -> str:
         .news-title { font-size: 0.9rem; font-weight: 500; line-height: 1.5; margin-bottom: 0.75rem; color: #fff; }
         .news-link { color: inherit; text-decoration: none; display: block; }
         .news-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        .event-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .event-item {
+            padding: 0.9rem;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.42);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-left: 4px solid var(--accent-primary);
+        }
+        .event-item.high { border-left-color: var(--negative); }
+        .event-top { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; color: var(--text-muted); font: 700 0.68rem/1 'JetBrains Mono', monospace; letter-spacing: 0.05em; text-transform: uppercase; }
+        .event-title { margin-top: 0.55rem; color: #fff; font-weight: 700; font-size: 0.85rem; line-height: 1.35; }
+        .event-note { margin-top: 0.45rem; color: rgba(255,255,255,0.68); font-size: 0.75rem; line-height: 1.45; }
+        .cmp-stack { display: grid; gap: 0.22rem; justify-items: end; }
+        .cmp-price { color: #fff; font-family: 'JetBrains Mono', monospace; }
+        .cmp-change { font: 800 0.68rem/1 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -804,7 +864,7 @@ def get_dashboard_html() -> str:
                             <thead>
                                 <tr>
                                     <th data-sort="symbol" class="col-left"><div style="text-align:left;">Ticker</div></th>
-                                    <th data-sort="ltp" class="col-right"><div style="text-align:right;">Price (₹)</div></th>
+                                    <th data-sort="ltp" class="col-right"><div style="text-align:right;">CMP / % Chg</div></th>
                                     <th data-sort="ac" class="col-right"><div style="text-align:right;">AC Osc</div></th>
                                     <th data-sort="velocity" class="col-right"><div style="text-align:right;">Velocity</div></th>
                                     <th data-sort="psar_af" class="col-right"><div style="text-align:right;">pSAR AF</div></th>
@@ -822,6 +882,17 @@ def get_dashboard_html() -> str:
             
             <!-- Right: Actionable Alerts -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 380px; flex-shrink: 0; overflow-y: hidden;">
+                <div class="card" style="flex: 0 0 auto; max-height: 280px;">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span style="font-size: 1.2rem;">📅</span>
+                            Upcoming Events
+                        </div>
+                    </div>
+                    <div class="card-body scroll-container event-list" id="eventsContainer" style="overflow-y: auto;">
+                        <div style="text-align:center; padding: 1rem; color: var(--text-muted);">Loading event calendar...</div>
+                    </div>
+                </div>
                 <!-- Alerts -->
                 <div class="card" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                     <div class="card-header">
@@ -859,6 +930,7 @@ def get_dashboard_html() -> str:
                     renderNews(data.latest_news);
                     renderScreener(data.top_predictions);
                     renderSectors(data.sector_analysis);
+                    renderEvents(data.upcoming_events);
                     renderAlerts(data.alerts);
                     renderChart(data);
                     
@@ -960,6 +1032,7 @@ def get_dashboard_html() -> str:
             const newHtml = sorted.map((p, idx) => {
                 const ac = p.ac || 0;
                 const vel = p.velocity || 0;
+                const changePercent = Number(p.change_percent || 0);
                 const confScore = p.confluence_score || 0;
                 
                 const barWidth = Math.min(Math.abs(confScore) * 100, 100);
@@ -975,7 +1048,12 @@ def get_dashboard_html() -> str:
                         <span style="opacity:0.5; font-size:0.7rem; font-family:'JetBrains Mono', monospace; width:15px; display:inline-block; text-align:right; margin-right:8px;">${idx+1}</span>
                         ${p.symbol}
                     </td>
-                    <td class="col-right">${fmtNum(p.ltp)}</td>
+                    <td class="col-right">
+                        <span class="cmp-stack">
+                            <span class="cmp-price">₹${fmtNum(p.ltp)}</span>
+                            <span class="cmp-change ${colorClass(changePercent)}">${changePercent >= 0 ? '+':''}${fmtNum(changePercent, 2)}%</span>
+                        </span>
+                    </td>
                     <td class="${colorClass(ac)} col-right">${ac >= 0 ? '+':''}${fmtNum(ac, 4)}</td>
                     <td class="${colorClass(vel)} col-right">${vel >= 0 ? '+':''}${fmtNum(vel, 4)}</td>
                     <td style="color: #cbd5e1;" class="col-right">${fmtNum(p.psar_af, 2)}</td>
@@ -1022,6 +1100,33 @@ def get_dashboard_html() -> str:
                 </div>
             `).join('');
             
+            if(c.innerHTML !== newHtml) {
+                c.innerHTML = newHtml;
+            }
+        }
+
+        function renderEvents(events) {
+            const c = document.getElementById('eventsContainer');
+            if(!c) return;
+            if(!events || !events.length) {
+                c.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">No upcoming major market events.</div>';
+                return;
+            }
+
+            const newHtml = events.slice(0, 6).map(e => {
+                const days = Number(e.days_until);
+                const countdown = days === 0 ? 'TODAY' : (days === 1 ? 'T-1 ALERT' : `T-${days}`);
+                const dateText = e.date ? new Date(`${e.date}T00:00:00+05:30`).toLocaleDateString('en-IN', {day: '2-digit', month: 'short'}) : '--';
+                const impactClass = e.impact === 'high' ? 'high' : 'medium';
+                return `
+                    <div class="event-item ${impactClass}">
+                        <div class="event-top"><span>${e.category || 'Market'}</span><span>${dateText} / ${countdown}</span></div>
+                        <div class="event-title">${e.title || 'Market event'}</div>
+                        <div class="event-note">${e.note || ''}</div>
+                    </div>
+                `;
+            }).join('');
+
             if(c.innerHTML !== newHtml) {
                 c.innerHTML = newHtml;
             }

@@ -61,6 +61,7 @@ class TechnicalData:
     """Technical indicators for a single stock."""
     symbol: str          # without .NS
     ltp: float = 0.0
+    change_percent: float = 0.0
     velocity: float = 0.0
     ac: float = 0.0
     psar_af: float = INITIAL_AF
@@ -191,6 +192,9 @@ def _analyze_single(ticker: str, ticker_data: pd.DataFrame, high_52w: float = 0.
             return None
 
         current_price = _safe_float(ticker_data['Close'].iloc[-1])
+        previous_index = max(0, len(ticker_data) - 13)
+        previous_price = _safe_float(ticker_data['Close'].iloc[previous_index])
+        change_percent = ((current_price - previous_price) / previous_price) * 100 if previous_price > 0 else 0.0
         analyzed, reversals = calculate_ac(ticker_data)
 
         velocity_val = _safe_float(analyzed['Velocity'].iloc[-1])
@@ -219,6 +223,7 @@ def _analyze_single(ticker: str, ticker_data: pd.DataFrame, high_52w: float = 0.
         return TechnicalData(
             symbol=clean_symbol,
             ltp=round(current_price, 2),
+            change_percent=round(change_percent, 2),
             velocity=round(velocity_val, 4),
             ac=round(ac_val, 4),
             psar_af=round(psar_af, 2),
@@ -353,12 +358,8 @@ class TechnicalAnalysisService:
                 if data is None or data.empty:
                     return None
 
-                if isinstance(data.columns, pd.MultiIndex):
-                    lvl = data.columns.get_level_values(0)
-                    if NIFTY_TICKER in lvl:
-                        data = data.xs(NIFTY_TICKER, axis=1, level=0).dropna(how='all')
-
-                if data.empty or len(data) < 10:
+                data = _extract_ticker_df(data, NIFTY_TICKER)
+                if data is None or data.empty or len(data) < 10:
                     return None
 
                 analyzed, reversals = calculate_ac(data)

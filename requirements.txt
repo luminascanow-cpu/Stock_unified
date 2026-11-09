@@ -5,7 +5,7 @@ requests>=2.31.0
 feedparser>=6.0.10
 beautifulsoup4>=4.12.3
 lxml>=5.1.0
-yfinance>=0.2.36
+
 textblob>=0.17.1
 vaderSentiment>=3.3.2
 numpy>=1.26.4
@@ -28,4 +28,6 @@ scikit-learn>=1.4.0
 cachetools>=5.3.2
 redis>=5.0.1
 pydantic>=2.5.3
-email-validator>=2.1.0.post1gunicorn>=21.2.0
+yfinance>=0.2.36
+email-validator>=2.1.0.post1
+gunicorn>=21.2.0

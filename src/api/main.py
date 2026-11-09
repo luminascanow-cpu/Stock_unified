@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -9,6 +10,7 @@ import json
 import io
 import csv
 import os
+import logging
 
 from ..services.prediction_engine_v2 import prediction_engine_v2
 from ..services.nse_service import nse_service, market_hours_service
@@ -20,25 +22,45 @@ from ..utils.config import config
 
 prediction_engine = prediction_engine_v2
 dashboard_data: DashboardData = None
+news_data = []
 websocket_connections: List[WebSocket] = []
+logger = logging.getLogger(__name__)
 
 portfolio_data: List[dict] = []
 watchlist: List[str] = []
 fcm_tokens: Dict[str, dict] = {}
 
 
+async def init_data_task():
+    global dashboard_data
+    try:
+        dashboard_data = await prediction_engine.refresh_data()
+    except Exception as e:
+        print(f"Initial data load failed: {e}")
+
+
+async def init_news_task():
+    global news_data
+    try:
+        news_data = await prediction_engine.refresh_news(force=True)
+    except Exception as e:
+        logger.error("Initial news load failed: %s", e)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global dashboard_data
-    dashboard_data = await prediction_engine.refresh_data()
-    
+    # Fire and forget the first load so Cloud Run binds port immediately
+    asyncio.create_task(init_data_task())
+    asyncio.create_task(init_news_task())
+
     asyncio.create_task(periodic_refresh())
+    asyncio.create_task(periodic_news_refresh())
     asyncio.create_task(websocket_broadcast())
-    
+
     market_hours_scheduler.start()
-    
+
     yield
-    
+
     market_hours_scheduler.stop()
 
 
@@ -46,11 +68,27 @@ async def periodic_refresh():
     global dashboard_data
     while True:
         await asyncio.sleep(config.app.get('refresh_interval', 300))
-        
+
         if market_hours_service.should_run_scheduler():
-            dashboard_data = await prediction_engine.refresh_data()
-            logger = __import__('logging').getLogger(__name__)
-            logger.info("Data refreshed during market hours")
+            try:
+                dashboard_data = await prediction_engine.refresh_data()
+                await asyncio.gather(
+                    *(alert_manager.process_alert(alert) for alert in dashboard_data.alerts),
+                    return_exceptions=True,
+                )
+                logger.info("Data refreshed during market hours")
+            except Exception as e:
+                logger.error("Periodic market refresh failed: %s", e)
+
+
+async def periodic_news_refresh():
+    global news_data
+    while True:
+        await asyncio.sleep(config.app.get('news_refresh_interval', 60))
+        try:
+            news_data = await prediction_engine.refresh_news(force=True)
+        except Exception as e:
+            logger.error("Periodic news refresh failed: %s", e)
 
 
 async def websocket_broadcast():
@@ -82,22 +120,45 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 @app.get("/api/dashboard")
 async def get_dashboard():
     global dashboard_data
     if dashboard_data is None:
-        dashboard_data = await prediction_engine.refresh_data()
+        # Prevent stampeding broker/news providers if the server is still booting
+        raise HTTPException(
+            status_code=503,
+            detail="The AI engine is still cold-booting and downloading market data. Please refresh in 30-60 seconds."
+        )
     return dashboard_data
 
 
 @app.get("/api/news")
 async def get_news():
-    global dashboard_data
+    global dashboard_data, news_data
+    if news_data:
+        return news_data
     if dashboard_data:
         return dashboard_data.latest_news
     return []
+
+
+@app.get("/api/news/status")
+async def get_news_status():
+    return prediction_engine.news_service.last_fetch_status
 
 
 @app.get("/api/sectors")
@@ -129,6 +190,29 @@ async def refresh_data():
     global dashboard_data
     dashboard_data = await prediction_engine.refresh_data()
     return {"status": "success", "last_updated": dashboard_data.last_updated.isoformat()}
+
+
+@app.get("/api/broker/status")
+async def broker_status():
+    return {"configured": True, "source": "Yahoo Finance", "requires_token": False}
+
+
+@app.get("/api/macro")
+async def get_macro_quotes():
+    from ..services.technical_analysis_service import technical_service
+
+    usd_inr, crude = await asyncio.gather(
+        india_service.currency.get_usd_inr_quote(),
+        technical_service.get_crude_ltp(),
+        return_exceptions=True
+    )
+
+    if isinstance(usd_inr, Exception):
+        usd_inr = {"label": "USD/INR", "value": None, "source": "Unavailable"}
+    if isinstance(crude, Exception):
+        crude = {"label": "WTI Crude", "symbol": "CL=F", "value": None, "currency": "USD", "source": "Unavailable"}
+
+    return {"usd_inr": usd_inr, "crude": crude}
 
 
 @app.get("/api/market-status")
@@ -173,10 +257,10 @@ async def get_india_data():
 @app.post("/api/portfolio/upload")
 async def upload_portfolio(file: UploadFile = File(...)):
     global portfolio_data
-    
+
     content = await file.read()
     reader = csv.DictReader(io.StringIO(content.decode()))
-    
+
     portfolio_data = []
     for row in reader:
         symbol = row.get('symbol', '').strip().upper()
@@ -187,7 +271,7 @@ async def upload_portfolio(file: UploadFile = File(...)):
                 'avg_price': float(row.get('avg_price', 0)),
                 'sector': row.get('sector', 'Unknown')
             })
-    
+
     for holding in portfolio_data:
         quote = await nse_service.get_quote(holding['symbol'])
         if quote:
@@ -195,7 +279,7 @@ async def upload_portfolio(file: UploadFile = File(...)):
             holding['current_value'] = holding['quantity'] * holding['current_price']
             holding['pnl'] = holding['current_value'] - (holding['quantity'] * holding['avg_price'])
             holding['pnl_percent'] = (holding['pnl'] / (holding['quantity'] * holding['avg_price'])) * 100 if holding['avg_price'] > 0 else 0
-    
+
     return {"status": "success", "holdings": portfolio_data}
 
 
@@ -258,7 +342,7 @@ async def get_sentiment_chart():
     global dashboard_data
     if not dashboard_data:
         return []
-    
+
     sentiment_counts = {
         'strong_bullish': 0,
         'bullish': 0,
@@ -266,12 +350,12 @@ async def get_sentiment_chart():
         'bearish': 0,
         'strong_bearish': 0
     }
-    
+
     for news in dashboard_data.latest_news:
         label = news.sentiment_label.value
         if label in sentiment_counts:
             sentiment_counts[label] += 1
-    
+
     return [
         {'sentiment': k, 'count': v}
         for k, v in sentiment_counts.items()
@@ -283,7 +367,7 @@ async def get_sector_heatmap():
     global dashboard_data
     if not dashboard_data:
         return []
-    
+
     return [
         {
             'sector': s.name,
@@ -383,7 +467,7 @@ async def subscribe_to_alerts(request: dict):
     global fcm_tokens
     token = request.get("token")
     alerts = request.get("alerts", {})
-    
+
     if token:
         if token in fcm_tokens:
             fcm_tokens[token]["alerts"] = alerts
@@ -411,16 +495,16 @@ async def send_notification(request: dict):
     title = request.get("title", "Stock Monitor")
     body = request.get("body", "")
     alert_type = request.get("type", "news")
-    
+
     if not fcm_tokens:
         return {"status": "success", "message": "No subscribers"}
-    
+
     sent_count = 0
     for token, data in fcm_tokens.items():
         alerts = data.get("alerts", {})
         if alerts.get(alert_type, False):
             sent_count += 1
-    
+
     return {"status": "success", "sent": sent_count, "total": len(fcm_tokens)}
 
 
@@ -472,41 +556,41 @@ def get_dashboard_html() -> str:
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', sans-serif; 
+        body {
+            font-family: 'Inter', sans-serif;
             background: radial-gradient(circle at top right, #0f172a, #020617 60%);
             background-attachment: fixed;
-            min-height: 100vh; 
-            color: var(--text-main); 
+            min-height: 100vh;
+            color: var(--text-main);
             -webkit-font-smoothing: antialiased;
         }
-        
+
         /* Layout Grid */
         .container { max-width: 1920px; margin: 0 auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
         .main-grid { display: grid; grid-template-columns: 280px 1fr 320px; gap: 1.5rem; height: calc(100vh - 180px); }
-        
+
         /* Header / Navbar */
-        .header { 
-            background: var(--bg-glass); 
-            backdrop-filter: blur(16px); 
+        .header {
+            background: var(--bg-glass);
+            backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--border-light); 
-            position: sticky; top: 0; z-index: 100; 
+            border-bottom: 1px solid var(--border-light);
+            position: sticky; top: 0; z-index: 100;
             padding: 1rem 1.5rem;
             display: flex; flex-direction: column; gap: 1rem;
         }
-        .header-top { display: flex; justify-content: space-between; align-items: center; }
-        
+        .header-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+
         .logo { display: flex; align-items: center; gap: 0.8rem; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-        .logo-icon { 
-            width: 32px; height: 32px; 
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6); 
-            border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; 
+        .logo-icon {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
             font-size: 1rem;
             box-shadow: 0 0 15px var(--accent-glow);
         }
-        
+
         .status-badge { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.8rem; border-radius: 99px; font-size: 0.75rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; text-transform: uppercase;}
         .market-open { background: var(--positive-bg); color: var(--positive); border: 1px solid rgba(16, 185, 129, 0.3); }
         .market-closed { background: var(--negative-bg); color: var(--negative); border: 1px solid rgba(239, 68, 68, 0.3); }
@@ -515,12 +599,26 @@ def get_dashboard_html() -> str:
         .market-closed .status-dot { background: var(--negative); }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; transform: scale(0.8); } }
 
+        .header-tools { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
+        .macro-tape { display: flex; align-items: center; gap: 0.5rem; }
+        .macro-chip {
+            display: grid; grid-template-columns: auto auto; column-gap: 0.55rem; row-gap: 0.1rem;
+            min-width: 118px; padding: 0.45rem 0.65rem;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 8px;
+            background: rgba(2, 6, 23, 0.32);
+        }
+        .macro-label { color: var(--text-muted); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; grid-column: 1 / -1; }
+        .macro-value { font-family: 'JetBrains Mono', monospace; font-size: 0.86rem; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+        .macro-delta { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 700; align-self: end; white-space: nowrap; }
+        .macro-source { color: #64748b; font-size: 0.58rem; font-weight: 600; grid-column: 1 / -1; text-transform: uppercase; letter-spacing: 0.06em; }
+
         /* Nifty Banner */
-        .nifty-banner { 
-            background: linear-gradient(90deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.2)); 
-            border: 1px solid var(--border-light); 
-            border-radius: 10px; padding: 0.75rem 1.5rem; 
-            display: flex; justify-content: space-between; align-items: center; 
+        .nifty-banner {
+            background: linear-gradient(90deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.2));
+            border: 1px solid var(--border-light);
+            border-radius: 10px; padding: 0.75rem 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .nifty-left { display: flex; gap: 1.25rem; align-items: center; }
         .nifty-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem;}
@@ -532,13 +630,13 @@ def get_dashboard_html() -> str:
         .nifty-metric { display: flex; flex-direction: column; align-items: flex-end; }
         .nifty-metric-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.2rem;}
         .nifty-metric-val { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; }
-        
+
         /* KPI Grid */
         .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; }
-        .stat-card { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border-light); 
-            border-radius: 12px; padding: 1.25rem; 
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px; padding: 1.25rem;
             backdrop-filter: blur(8px);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -553,32 +651,32 @@ def get_dashboard_html() -> str:
         .stat-card:hover::before { transform: translateX(100%); }
         .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.75rem; font-weight: 600;}
         .stat-value { font-size: 1.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;}
-        
+
         /* Cards */
-        .card { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border-light); 
-            border-radius: 16px; 
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
             overflow: hidden; display: flex; flex-direction: column;
             backdrop-filter: blur(12px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
-        .card-header { 
-            padding: 1.25rem 1.5rem; 
-            border-bottom: 1px solid var(--border-light); 
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-light);
             background: rgba(15, 23, 42, 0.4);
             display: flex; justify-content: space-between; align-items: center;
         }
         .card-title { font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.75rem; color: #fff;}
         .card-body { padding: 1rem; overflow-y: auto; flex: 1; position: relative;}
-        
+
         /* News Sidebar */
         .news-list { display: flex; flex-direction: column; gap: 0.75rem; }
-        .news-item { 
-            padding: 1rem; border-radius: 10px; 
-            background: rgba(15, 23, 42, 0.4); 
-            border: 1px solid rgba(255,255,255,0.03); 
-            transition: all 0.2s; 
+        .news-item {
+            padding: 1rem; border-radius: 10px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s;
             cursor: pointer;
             animation: fadeIn 0.5s ease-out;
         }
@@ -587,7 +685,23 @@ def get_dashboard_html() -> str:
         .news-title { font-size: 0.9rem; font-weight: 500; line-height: 1.5; margin-bottom: 0.75rem; color: #fff; }
         .news-link { color: inherit; text-decoration: none; display: block; }
         .news-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        
+
+        .event-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .event-item {
+            padding: 0.9rem;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.42);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-left: 4px solid var(--accent-primary);
+        }
+        .event-item.high { border-left-color: var(--negative); }
+        .event-top { display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; color: var(--text-muted); font: 700 0.68rem/1 'JetBrains Mono', monospace; letter-spacing: 0.05em; text-transform: uppercase; }
+        .event-title { margin-top: 0.55rem; color: #fff; font-weight: 700; font-size: 0.85rem; line-height: 1.35; }
+        .event-note { margin-top: 0.45rem; color: rgba(255,255,255,0.68); font-size: 0.75rem; line-height: 1.45; }
+        .cmp-stack { display: grid; gap: 0.22rem; justify-items: end; }
+        .cmp-price { color: #fff; font-family: 'JetBrains Mono', monospace; }
+        .cmp-change { font: 800 0.68rem/1 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Badges */
@@ -597,32 +711,32 @@ def get_dashboard_html() -> str:
         .badge-sentiment-neutral { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); }
         .badge-sentiment-bearish { background: rgba(248, 113, 113, 0.1); color: #f87171; }
         .badge-sentiment-strong_bearish { background: var(--negative-bg); color: var(--negative); border: 1px solid rgba(239, 68, 68, 0.3); }
-        
+
         /* Confluence Table */
         .table-container { width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; padding-right: 0.5rem;}
         .confluence-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 0.85rem; }
-        .confluence-table th { 
-            position: sticky; top: 0; 
-            background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(12px); 
-            padding: 1rem 0.75rem; text-align: left; 
-            color: var(--text-muted); font-weight: 600; font-size: 0.75rem; 
+        .confluence-table th {
+            position: sticky; top: 0;
+            background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(12px);
+            padding: 1rem 0.75rem; text-align: left;
+            color: var(--text-muted); font-weight: 600; font-size: 0.75rem;
             text-transform: uppercase; letter-spacing: 0.05em;
             z-index: 10; cursor: pointer; user-select: none; transition: color 0.2s;
             border-bottom: 1px solid var(--border-light);
         }
         .confluence-table th:hover { color: #fff; }
-        .confluence-table tbody tr { 
-            transition: all 0.2s; 
+        .confluence-table tbody tr {
+            transition: all 0.2s;
             background: rgba(15, 23, 42, 0.3);
         }
-        .confluence-table td { 
-            padding: 0.8rem 0.75rem; 
-            border-top: 1px solid transparent; border-bottom: 1px solid transparent; 
-            font-family: 'JetBrains Mono', monospace; 
+        .confluence-table td {
+            padding: 0.8rem 0.75rem;
+            border-top: 1px solid transparent; border-bottom: 1px solid transparent;
+            font-family: 'JetBrains Mono', monospace;
             vertical-align: middle;
         }
-        .confluence-table tbody tr:hover { 
-            background: rgba(30, 41, 59, 0.6)!important; 
+        .confluence-table tbody tr:hover {
+            background: rgba(30, 41, 59, 0.6)!important;
             transform: scale(1.01);
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             position: relative; z-index: 5;
@@ -630,30 +744,30 @@ def get_dashboard_html() -> str:
         }
         .confluence-table tbody tr:hover td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
         .confluence-table tbody tr:hover td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
-        
+
         .col-script { font-family: 'Inter', sans-serif !important; font-weight: 700; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;}
-        
+
         /* Alignment Classes */
         th.col-left, td.col-left { text-align: left !important; justify-content: flex-start !important; }
         th.col-center, td.col-center { text-align: center !important; justify-content: center !important; }
         th.col-right, td.col-right { text-align: right !important; justify-content: flex-end !important; }
-        
+
         /* Confluence Bar */
         .conf-cell { display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end;}
         .conf-score { width: 45px; text-align: right; font-weight: 600; }
-        .conf-bar-wrapper { 
-            width: 70px; height: 6px; 
-            background: rgba(0,0,0,0.5); 
+        .conf-bar-wrapper {
+            width: 70px; height: 6px;
+            background: rgba(0,0,0,0.5);
             border-radius: 3px; overflow: hidden; position: relative;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
         }
         .conf-bar-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .conf-pos { background: linear-gradient(90deg, #10b981, #34d399); left: 50%; box-shadow: 0 0 8px rgba(16,185,129,0.5); }
         .conf-neg { background: linear-gradient(270deg, #ef4444, #f87171); right: 50%; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-        
+
         /* Alerts */
-        .alert-item { 
-            padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem; 
+        .alert-item {
+            padding: 1rem; border-radius: 10px; margin-bottom: 0.75rem;
             font-size: 0.85rem; position: relative; overflow: hidden;
             animation: fadeIn 0.5s ease-out;
         }
@@ -667,15 +781,53 @@ def get_dashboard_html() -> str:
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px;}
         ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
-        
+
         /* Utility */
         .val-pos { color: var(--positive); }
         .val-neg { color: var(--negative); }
         .text-glow-pos { text-shadow: 0 0 10px rgba(16,185,129,0.4); }
         .text-glow-neg { text-shadow: 0 0 10px rgba(239,68,68,0.4); }
-        
+
         .skeleton { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 400% 100%; animation: skeletonLoading 1.5s infinite; border-radius: 4px;}
         @keyframes skeletonLoading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        /* Mobile Responsiveness */
+        .sidebar-col { display: flex; flex-direction: column; gap: 1.5rem; width: 380px; flex-shrink: 0; overflow-y: hidden; }
+
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; height: auto; }
+            .sidebar-col { width: 100%; overflow-y: visible; gap: 1rem; }
+            .card { min-height: 400px; }
+            .card-body { overflow-y: visible !important; }
+            .nifty-banner { flex-direction: column; gap: 1rem; text-align: center; }
+            .nifty-left, .nifty-right { justify-content: center; width: 100%; }
+            .nifty-center { min-height: auto; margin: 1rem 0; }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); padding: 0.2rem; }
+            .container { padding: 0.5rem; gap: 0.75rem; }
+            .header-top { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; }
+            .header-tools { width: 100%; gap: 0.5rem; justify-content: space-between; }
+            .macro-tape { order: -1; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+            .macro-chip { min-width: 0; width: 100%; }
+
+            /* Banner re-layout for mobile to save vertical space */
+            .nifty-banner { flex-direction: row; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; align-items: center; justify-content: space-between; }
+            .nifty-left { flex: 1 1 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.5rem; }
+            .nifty-center { display: none; } /* Hide the macro bias pie chart on mobile to save massive space */
+            .nifty-right { flex: 1 1 100%; display: flex; flex-direction: row; justify-content: space-between; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); }
+            .nifty-metric { align-items: flex-start; }
+            .nifty-metric-label { font-size: 0.55rem; line-height: 1; margin-bottom: 0; }
+            .nifty-metric-val { font-size: 0.85rem; line-height: 1; }
+
+            .card { min-height: 350px; }
+            .conf-cell { justify-content: center; flex-direction: column; gap: 0.25rem; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -685,7 +837,25 @@ def get_dashboard_html() -> str:
                 <div class="logo-icon">⚡</div>
                 <span style="background: linear-gradient(to right, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Confluence Terminal</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div class="header-tools">
+                <div class="macro-tape" aria-label="Macro market quotes">
+                    <div class="macro-chip">
+                        <span class="macro-label">USD/INR</span>
+                        <span class="macro-value" id="usdInrValue">--</span>
+                        <span class="macro-delta" id="usdInrDelta">--</span>
+                        <span class="macro-source" id="usdInrSource">loading</span>
+                    </div>
+                    <div class="macro-chip">
+                        <span class="macro-label">Crude LTP</span>
+                        <span class="macro-value" id="crudeValue">--</span>
+                        <span class="macro-delta" id="crudeDelta">--</span>
+                        <span class="macro-source" id="crudeSource">loading</span>
+                    </div>
+                </div>
+                <div style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28); padding: 0.5rem 0.75rem; color: #86efac; border-radius: 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; display: flex; align-items: center; gap: 0.45rem;">
+                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.75);"></span>
+                    Yahoo Finance
+                </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
                     <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Last Sync</span>
                     <span style="font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; font-weight: 500;" id="lastUpdated">--:--:--</span>
@@ -703,7 +873,7 @@ def get_dashboard_html() -> str:
                 <span class="nifty-ltp" id="niftyLtp">--</span>
                 <span class="nifty-signal" id="niftySignal">--</span>
             </div>
-            
+
             <div class="nifty-center" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px;">
                 <span style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: -10px; z-index: 10;">Macro Bias</span>
                 <div id="sentimentChart" style="width: 140px; height: 140px; margin-top: -15px;">
@@ -727,7 +897,7 @@ def get_dashboard_html() -> str:
             </div>
         </div>
     </header>
-    
+
     <div class="container">
         <!-- KPIs -->
         <div class="stats-grid">
@@ -759,10 +929,10 @@ def get_dashboard_html() -> str:
                 </div>
             </div>
         </div>
-        
+
         <div class="main-grid">
             <!-- Left: GeoPolitical News & Sector Sentiments -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 380px; flex-shrink: 0; overflow-y: hidden;">
+            <div class="sidebar-col">
                 <!-- Live Intelligence -->
                 <div class="card" style="flex: 1.2; display: flex; flex-direction: column; min-height: 0;">
                     <div class="card-header">
@@ -789,7 +959,7 @@ def get_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
-            
+
             <!-- Center: Confluence Screener -->
             <div class="card" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                 <div class="card-header" style="background: linear-gradient(90deg, rgba(15,23,42,0.8), rgba(30,41,59,0.8));">
@@ -804,7 +974,8 @@ def get_dashboard_html() -> str:
                             <thead>
                                 <tr>
                                     <th data-sort="symbol" class="col-left"><div style="text-align:left;">Ticker</div></th>
-                                    <th data-sort="ltp" class="col-right"><div style="text-align:right;">Price (₹)</div></th>
+                                    <th data-sort="ltp" class="col-right"><div style="text-align:right;">CMP / % Chg</div></th>
+                                    <th data-sort="high_52w" class="col-right"><div style="text-align:right;">52W High (₹)</div></th>
                                     <th data-sort="ac" class="col-right"><div style="text-align:right;">AC Osc</div></th>
                                     <th data-sort="velocity" class="col-right"><div style="text-align:right;">Velocity</div></th>
                                     <th data-sort="psar_af" class="col-right"><div style="text-align:right;">pSAR AF</div></th>
@@ -819,9 +990,20 @@ def get_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
-            
+
             <!-- Right: Actionable Alerts -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem; width: 380px; flex-shrink: 0; overflow-y: hidden;">
+            <div class="sidebar-col">
+                <div class="card" style="flex: 0 0 auto; max-height: 280px;">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span style="font-size: 1.2rem;">📅</span>
+                            Upcoming Events
+                        </div>
+                    </div>
+                    <div class="card-body scroll-container event-list" id="eventsContainer" style="overflow-y: auto;">
+                        <div style="text-align:center; padding: 1rem; color: var(--text-muted);">Loading event calendar...</div>
+                    </div>
+                </div>
                 <!-- Alerts -->
                 <div class="card" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                     <div class="card-header">
@@ -848,6 +1030,36 @@ def get_dashboard_html() -> str:
         // formatters
         const fmtNum = (n, d=2) => (n !== null && n !== undefined) ? Number(n).toFixed(d) : '--';
         const colorClass = (n) => n > 0 ? 'val-pos' : (n < 0 ? 'val-neg' : '');
+        const fmtDelta = (n, d=2) => (n === null || n === undefined) ? '--' : `${n >= 0 ? '+' : ''}${Number(n).toFixed(d)}`;
+
+        function renderMacroQuote(prefix, quote, options = {}) {
+            const valueEl = document.getElementById(`${prefix}Value`);
+            const deltaEl = document.getElementById(`${prefix}Delta`);
+            const sourceEl = document.getElementById(`${prefix}Source`);
+            if (!valueEl || !deltaEl || !sourceEl) return;
+
+            const value = quote?.value;
+            const changePercent = quote?.change_percent;
+            const currencyPrefix = quote?.currency === 'USD' ? '$' : (quote?.currency === 'INR' ? '₹' : (options.prefix || ''));
+            valueEl.textContent = value === null || value === undefined ? '--' : `${currencyPrefix}${fmtNum(value, options.decimals ?? 2)}`;
+            deltaEl.textContent = fmtDelta(changePercent, 2) + (changePercent === null || changePercent === undefined ? '' : '%');
+            deltaEl.className = `macro-delta ${colorClass(changePercent || 0)}`;
+            sourceEl.textContent = quote?.symbol || quote?.source || 'unavailable';
+        }
+
+        function updateMacro() {
+            fetch('/api/macro')
+                .then(r => r.json())
+                .then(data => {
+                    renderMacroQuote('usdInr', data.usd_inr, {decimals: 4});
+                    renderMacroQuote('crude', data.crude, {decimals: 2});
+                })
+                .catch(err => {
+                    console.error('Macro quote fetch error:', err);
+                    renderMacroQuote('usdInr', null);
+                    renderMacroQuote('crude', null);
+                });
+        }
 
         function updateDashboard() {
             fetch('/api/dashboard')
@@ -859,13 +1071,15 @@ def get_dashboard_html() -> str:
                     renderNews(data.latest_news);
                     renderScreener(data.top_predictions);
                     renderSectors(data.sector_analysis);
+                    renderEvents(data.upcoming_events);
                     renderAlerts(data.alerts);
                     renderChart(data);
-                    
                     document.getElementById('lastUpdated').textContent = data.technical_updated || new Date().toLocaleTimeString();
                 })
                 .catch(err => console.error('Dashboard fetch error:', err));
-                
+
+            updateMacro();
+
             fetch('/api/market-status')
                 .then(r => r.json())
                 .then(data => {
@@ -884,19 +1098,19 @@ def get_dashboard_html() -> str:
         function renderNifty(nifty) {
             if(!nifty) return;
             document.getElementById('niftyLtp').textContent = `₹${fmtNum(nifty.ltp)}`;
-            
+
             const sigEl = document.getElementById('niftySignal');
             sigEl.textContent = nifty.trend;
             sigEl.className = `nifty-signal signal-${nifty.trend.toLowerCase()}`;
-            
+
             const velEl = document.getElementById('niftyVel');
             velEl.textContent = (nifty.velocity >= 0 ? '+' : '') + fmtNum(nifty.velocity, 4);
             velEl.className = `nifty-metric-val ${colorClass(nifty.velocity)}`;
-            
+
             const acEl = document.getElementById('niftyAc');
             acEl.textContent = (nifty.ac >= 0 ? '+' : '') + fmtNum(nifty.ac, 4);
             acEl.className = `nifty-metric-val ${colorClass(nifty.ac)}`;
-            
+
             document.getElementById('niftyAf').textContent = fmtNum(nifty.psar_af);
         }
 
@@ -913,7 +1127,7 @@ def get_dashboard_html() -> str:
         function renderNews(news) {
             const c = document.getElementById('newsContainer');
             if(!news || !news.length) { c.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted);">No news events detected.</div>'; return; }
-            
+
             const newHtml = news.map(n => `
                 <div class="news-item">
                     <div class="news-source">
@@ -939,31 +1153,32 @@ def get_dashboard_html() -> str:
 
         function renderScreener(preds) {
             const tbody = document.getElementById('screenerBody');
-            if(!preds || !preds.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color:var(--text-muted);">Fetching analysis data...</td></tr>'; return; }
-            
+            if(!preds || !preds.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 2rem; color:var(--text-muted);">Fetching analysis data...</td></tr>'; return; }
+
             // Sort
             const sorted = [...preds].sort((a,b) => {
                 let valA = a[sortCol];
                 let valB = b[sortCol];
-                
+
                 if(sortCol === 'prediction') { valA = a.prediction; valB = b.prediction; }
-                
+
                 if(valA === null || valA === undefined) return 1;
                 if(valB === null || valB === undefined) return -1;
-                
+
                 if(typeof valA === 'string') return sortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
                 return sortDesc ? valB - valA : valA - valB;
             });
-            
+
             const sigEmoji = { 'STRONG_BUY': '🔥', 'BUY': '✨', 'NEUTRAL': '➖', 'SELL': '⚠️', 'STRONG_SELL': '⛔' };
 
             const newHtml = sorted.map((p, idx) => {
                 const ac = p.ac || 0;
                 const vel = p.velocity || 0;
+                const changePercent = Number(p.change_percent || 0);
                 const confScore = p.confluence_score || 0;
-                
+
                 const barWidth = Math.min(Math.abs(confScore) * 100, 100);
-                const barHtml = confScore >= 0 
+                const barHtml = confScore >= 0
                     ? `<div class="conf-bar-fill conf-pos" style="width: ${barWidth/2}%;"></div>`
                     : `<div class="conf-bar-fill conf-neg" style="width: ${barWidth/2}%;"></div>`;
 
@@ -975,7 +1190,13 @@ def get_dashboard_html() -> str:
                         <span style="opacity:0.5; font-size:0.7rem; font-family:'JetBrains Mono', monospace; width:15px; display:inline-block; text-align:right; margin-right:8px;">${idx+1}</span>
                         ${p.symbol}
                     </td>
-                    <td class="col-right">${fmtNum(p.ltp)}</td>
+                    <td class="col-right">
+                        <span class="cmp-stack">
+                            <span class="cmp-price">₹${fmtNum(p.ltp)}</span>
+                            <span class="cmp-change ${colorClass(changePercent)}">${changePercent >= 0 ? '+':''}${fmtNum(changePercent, 2)}%</span>
+                        </span>
+                    </td>
+                    <td class="col-right" style="color: var(--text-muted);">${fmtNum(p.high_52w)}</td>
                     <td class="${colorClass(ac)} col-right">${ac >= 0 ? '+':''}${fmtNum(ac, 4)}</td>
                     <td class="${colorClass(vel)} col-right">${vel >= 0 ? '+':''}${fmtNum(vel, 4)}</td>
                     <td style="color: #cbd5e1;" class="col-right">${fmtNum(p.psar_af, 2)}</td>
@@ -1004,7 +1225,7 @@ def get_dashboard_html() -> str:
         function renderSectors(sectors) {
             const c = document.getElementById('sectorContainer');
             if(!sectors || !sectors.length) { c.innerHTML = '<div style="color:var(--text-muted); text-align:center;">No sector data</div>'; return; }
-            
+
             const newHtml = sectors.map(s => `
                 <div style="background: rgba(15,23,42,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
@@ -1021,7 +1242,34 @@ def get_dashboard_html() -> str:
                     ${s.top_url ? `<div style="margin-top: 0.25rem;"><a href="${s.top_url}" target="_blank" style="color:var(--accent-primary); font-size:0.75rem; text-decoration:none;">View Top Story →</a></div>` : ''}
                 </div>
             `).join('');
-            
+
+            if(c.innerHTML !== newHtml) {
+                c.innerHTML = newHtml;
+            }
+        }
+
+        function renderEvents(events) {
+            const c = document.getElementById('eventsContainer');
+            if(!c) return;
+            if(!events || !events.length) {
+                c.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">No upcoming major market events.</div>';
+                return;
+            }
+
+            const newHtml = events.slice(0, 6).map(e => {
+                const days = Number(e.days_until);
+                const countdown = days === 0 ? 'TODAY' : (days === 1 ? 'T-1 ALERT' : `T-${days}`);
+                const dateText = e.date ? new Date(`${e.date}T00:00:00+05:30`).toLocaleDateString('en-IN', {day: '2-digit', month: 'short'}) : '--';
+                const impactClass = e.impact === 'high' ? 'high' : 'medium';
+                return `
+                    <div class="event-item ${impactClass}">
+                        <div class="event-top"><span>${e.category || 'Market'}</span><span>${dateText} / ${countdown}</span></div>
+                        <div class="event-title">${e.title || 'Market event'}</div>
+                        <div class="event-note">${e.note || ''}</div>
+                    </div>
+                `;
+            }).join('');
+
             if(c.innerHTML !== newHtml) {
                 c.innerHTML = newHtml;
             }
@@ -1030,7 +1278,7 @@ def get_dashboard_html() -> str:
         function renderAlerts(alerts) {
             const c = document.getElementById('alertsContainer');
             if(!alerts || !alerts.length) { c.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.9rem;">No actionable alerts. System monitoring...</div>'; return; }
-            
+
             const newHtml = alerts.map(a => {
                 const clickStyle = a.url ? 'cursor: pointer; transition: transform 0.2s;' : '';
                 const clickAttr = a.url ? `onclick="window.open('${a.url}', '_blank')"` : '';
@@ -1054,7 +1302,7 @@ def get_dashboard_html() -> str:
 
         function renderChart(data) {
             if(!data.sector_analysis) return;
-            
+
             const counts = {'Bullish':0, 'Bearish':0, 'Neutral':0};
             data.top_predictions.forEach(p => {
                 const sentiment = (p.prediction || '').toLowerCase();
@@ -1062,10 +1310,10 @@ def get_dashboard_html() -> str:
                 else if(sentiment.includes('bearish')) counts['Bearish']++;
                 else counts['Neutral']++;
             });
-            
+
             const total = counts['Bullish'] + counts['Bearish'] + counts['Neutral'];
             if(total === 0) return;
-            
+
             const plotData = [{
                 values: [counts['Bullish'], counts['Neutral'], counts['Bearish']],
                 labels: ['Bullish', 'Neutral', 'Bearish'],
@@ -1074,7 +1322,7 @@ def get_dashboard_html() -> str:
                 rotation: 90,
                 direction: 'clockwise',
                 domain: {x: [0, 1], y: [0, 1]},
-                marker: { 
+                marker: {
                     colors: ['#10b981', '#475569', '#ef4444'],
                     line: {color: 'rgba(0,0,0,0)', width: 0}
                 },
@@ -1083,7 +1331,7 @@ def get_dashboard_html() -> str:
                 hoverinfo: 'label+value',
                 hovertemplate: '<b>%{label}</b><br>%{value} signals<extra></extra>'
             }];
-            
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1092,9 +1340,9 @@ def get_dashboard_html() -> str:
                 font: { color: '#f8fafc', family: 'Inter' },
                 transition: {duration: 500, easing: 'cubic-in-out'}
             };
-            
+
             const chartDiv = document.getElementById('sentimentChart');
-            
+
             if (!chartInitialized) {
                 chartDiv.innerHTML = ''; // Clear skeleton
                 Plotly.newPlot(chartDiv, plotData, layout, {displayModeBar: false, responsive: true});
@@ -1109,22 +1357,22 @@ def get_dashboard_html() -> str:
             th.addEventListener('click', () => {
                 const col = th.dataset.sort;
                 if(!col) return;
-                
+
                 // Add active state styling to headers
                 document.querySelectorAll('.confluence-table th').forEach(h => h.style.color = 'var(--text-muted)');
                 th.style.color = '#fff';
-                
+
                 if(sortCol === col) {
                     sortDesc = !sortDesc;
                 } else {
                     sortCol = col;
                     sortDesc = true;
                 }
-                
+
                 // Add visual indicator of sort direction
                 document.querySelectorAll('.sort-arrow').forEach(a => a.remove());
                 th.innerHTML += `<span class="sort-arrow" style="margin-left:5px; font-size:0.8rem; color:var(--accent-primary)">${sortDesc ? '↓' : '↑'}</span>`;
-                
+
                 if(currentData) renderScreener(currentData.top_predictions);
             });
         });
@@ -1138,9 +1386,10 @@ def get_dashboard_html() -> str:
 
         // Init
         updateDashboard();
-        
+        updateMacro();
+
         // Refresh every 15s (won't hang UI anymore thanks to DOM diffing & Plotly.react)
-        setInterval(updateDashboard, 15000); 
+        setInterval(updateDashboard, 15000);
     </script>
 </body>
 </html>'''

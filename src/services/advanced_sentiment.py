@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 from ..models.models import NewsArticle, SentimentType
 from ..utils.config import config
+from .news_matching import contains_any, contains_phrase
 
 try:
     from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
@@ -68,8 +69,7 @@ class FinBERTService:
             probs = torch.softmax(outputs.logits, dim=1)
             pred_idx = torch.argmax(probs, dim=1).item()
             
-            labels = ['negative', 'neutral', 'positive']
-            label = labels[pred_idx]
+            label = self._label_for_index(pred_idx)
             confidence = probs[0][pred_idx].item()
             
             score_map = {'positive': 0.5, 'neutral': 0.0, 'negative': -0.5}
@@ -83,7 +83,45 @@ class FinBERTService:
             return 0.0, "neutral"
     
     def analyze_batch(self, texts: List[str]) -> List[Tuple[float, str]]:
-        return [self.analyze(text) for text in texts]
+        if not texts:
+            return []
+        if self._model is None:
+            return [self.analyze(text) for text in texts]
+
+        try:
+            inputs = self._tokenizer(
+                texts,
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=512,
+            )
+            with torch.no_grad():
+                outputs = self._model(**inputs)
+            probabilities = torch.softmax(outputs.logits, dim=1)
+            indices = torch.argmax(probabilities, dim=1).tolist()
+            score_map = {'positive': 0.5, 'neutral': 0.0, 'negative': -0.5}
+            return [
+                (
+                    score_map.get(self._label_for_index(index), 0.0)
+                    * probabilities[row][index].item(),
+                    self._label_for_index(index),
+                )
+                for row, index in enumerate(indices)
+            ]
+        except Exception as e:
+            logger.error(f"FinBERT batch analysis error: {e}")
+            return [self.analyze(text) for text in texts]
+
+    def _label_for_index(self, index: int) -> str:
+        configured = getattr(getattr(self._model, "config", None), "id2label", {}) or {}
+        raw = str(configured.get(index, configured.get(str(index), ""))).lower()
+        for label in ("positive", "negative", "neutral"):
+            if label in raw:
+                return label
+        # ProsusAI/finbert's documented class order.
+        fallback = ['positive', 'negative', 'neutral']
+        return fallback[index] if 0 <= index < len(fallback) else "neutral"
 
 
 class FallbackSentiment:
@@ -171,14 +209,23 @@ class AdvancedSentimentService:
     
     def analyze_article(self, article: NewsArticle) -> NewsArticle:
         text = article.title + ' ' + article.description
-        
         base_score, label = self.finbert.analyze(text)
-        
+        return self._apply_analysis(article, text, base_score)
+
+    def analyze_articles(self, articles: List[NewsArticle]) -> List[NewsArticle]:
+        texts = [article.title + ' ' + article.description for article in articles]
+        results = []
+        for start in range(0, len(texts), 16):
+            results.extend(self.finbert.analyze_batch(texts[start:start + 16]))
+        return [
+            self._apply_analysis(article, text, score)
+            for article, text, (score, _label) in zip(articles, texts, results)
+        ]
+
+    def _apply_analysis(self, article: NewsArticle, text: str, base_score: float) -> NewsArticle:
         if self.sentiment_config.get('context_aware', True):
             base_score = self.context_analyzer.adjust_sentiment(base_score, text)
-        
-        entities = self.context_analyzer.extract_entities(text)
-        
+
         article.sentiment_score = base_score
         article.sentiment_label = self._score_to_sentiment(base_score)
         article.keywords = self._extract_keywords(text)
@@ -206,14 +253,13 @@ class AdvancedSentimentService:
             sector_keywords.extend(sector.get('keywords', []))
         
         for keyword in sector_keywords:
-            if keyword.lower() in text_lower:
+            if contains_phrase(text_lower, keyword):
                 keywords.append(keyword)
         
         return list(set(keywords))[:5]
     
     def _is_breaking(self, text: str) -> bool:
-        text_lower = text.lower()
-        return any(kw.lower() in text_lower for kw in self.alert_keywords)
+        return contains_any(text, self.alert_keywords)
     
     def calculate_sector_sentiment(self, articles: List[NewsArticle], sector_keywords: List[str]) -> Tuple[float, SentimentType]:
         if not articles:
@@ -224,7 +270,7 @@ class AdvancedSentimentService:
         
         for article in articles:
             text = (article.title + ' ' + article.description).lower()
-            if any(kw.lower() in text for kw in sector_keywords):
+            if contains_any(text, sector_keywords):
                 total_score += article.sentiment_score
                 count += 1
         

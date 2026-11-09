@@ -19,6 +19,7 @@ class MarketHoursScheduler:
     def __init__(self):
         self.scheduler_config = config.get('scheduler', {})
         self.enabled = self.scheduler_config.get('market_hours', {}).get('enabled', True)
+        self.refresh_job_enabled = self.scheduler_config.get('market_hours', {}).get('refresh_job_enabled', False)
         self.interval_minutes = self.scheduler_config.get('market_hours', {}).get('interval_minutes', 5)
         
         self.morning_config = self.scheduler_config.get('morning_digest', {})
@@ -53,13 +54,16 @@ class MarketHoursScheduler:
             )
             logger.info(f"EOD summary scheduled at {eod_time}")
         
-        scheduler.add_job(
-            self.market_refresh_job,
-            IntervalTrigger(minutes=self.interval_minutes),
-            id='market_refresh',
-            replace_existing=True
-        )
-        logger.info(f"Market refresh scheduled every {self.interval_minutes} minutes")
+        if self.refresh_job_enabled:
+            scheduler.add_job(
+                self.market_refresh_job,
+                IntervalTrigger(minutes=self.interval_minutes),
+                id='market_refresh',
+                replace_existing=True
+            )
+            logger.info(f"Market refresh scheduled every {self.interval_minutes} minutes")
+        else:
+            logger.info("Scheduler market refresh disabled; API refresh loop owns market updates")
         
         scheduler.add_job(
             self.health_check_job,

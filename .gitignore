@@ -46,3 +46,9 @@ firebase-debug.log*
 # IDEs
 .vscode/
 .idea/
+
+# Local audits and one-off diagnostics
+premium-audit.json
+search_brain.py
+test_functions_nifty.py
+test_nifty_yf.py

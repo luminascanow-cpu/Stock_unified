@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 from ..utils.config import config
 
 try:
-    import yfinance as yf
+    pass
 except ImportError:
-    yf = None
+    pass
 
 
 @dataclass
@@ -200,19 +200,16 @@ class FIIDIIFlowTracker:
     
     async def get_latest_flow(self) -> Optional[FIIData]:
         try:
-            if yf:
-                ns = yf.Ticker("^NIFTY")
-                info = ns.info
-                
-                return FIIData(
-                    date=datetime.now().strftime('%Y-%m-%d'),
-                    fii_buy=0,
-                    fii_sell=0,
-                    fii_net=0,
-                    dii_buy=0,
-                    dii_sell=0,
-                    dii_net=0
-                )
+            # Removed yfinance dependency for NIFTY. Returning defaults.
+            return FIIData(
+                date=datetime.now().strftime('%Y-%m-%d'),
+                fii_buy=0,
+                fii_sell=0,
+                fii_net=0,
+                dii_buy=0,
+                dii_sell=0,
+                dii_net=0
+            )
         except Exception as e:
             logger.error(f"FII/DII flow error: {e}")
         
@@ -254,6 +251,86 @@ class CurrencyImpactAnalyzer:
         self.config = config.get('india_specific', {}).get('currency_impact', {})
         self.enabled = self.config.get('enabled', True)
         self.pairs = self.config.get('pairs', ['USD/INR'])
+        self._quote_cache: Optional[Dict] = None
+        self._quote_cache_ts: Optional[datetime] = None
+        self.cache_duration = self.config.get('cache_duration', 60)
+
+    async def get_usd_inr_quote(self) -> Dict:
+        now = datetime.now()
+        if (
+            self._quote_cache
+            and self._quote_cache_ts
+            and (now - self._quote_cache_ts).total_seconds() < self.cache_duration
+        ):
+            return self._quote_cache
+
+        quote = {
+            'symbol': 'USDINR',
+            'label': 'USD/INR',
+            'value': None,
+            'change': None,
+            'change_percent': None,
+            'source': 'Yahoo Finance',
+            'timestamp': now.isoformat()
+        }
+
+        try:
+            url = "https://query1.finance.yahoo.com/v8/finance/chart/USDINR=X?range=1d&interval=1m"
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json",
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=8) as response:
+                    if response.status == 200:
+                        payload = await response.json()
+                        result = payload.get('chart', {}).get('result', [])
+                        meta = result[0].get('meta', {}) if result else {}
+                        current = meta.get('regularMarketPrice')
+                        previous = meta.get('chartPreviousClose') or meta.get('previousClose')
+
+                        if current is not None:
+                            change = (float(current) - float(previous)) if previous else None
+                            quote.update({
+                                'value': round(float(current), 4),
+                                'change': round(change, 4) if change is not None else None,
+                                'change_percent': round((change / float(previous)) * 100, 3) if change is not None and previous else None,
+                                'timestamp': datetime.fromtimestamp(meta.get('regularMarketTime', now.timestamp())).isoformat()
+                            })
+        except Exception as e:
+            logger.warning(f"USD/INR live quote failed: {e}")
+
+        if quote['value'] is None:
+            try:
+                url = "https://open.er-api.com/v6/latest/USD"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, headers={"Accept": "application/json"}, timeout=8) as response:
+                        if response.status == 200:
+                            payload = await response.json()
+                            rate = payload.get('rates', {}).get('INR')
+                            if rate is not None:
+                                quote.update({
+                                    'value': round(float(rate), 4),
+                                    'change': 0.0,
+                                    'change_percent': 0.0,
+                                    'source': 'ExchangeRate API',
+                                    'timestamp': datetime.fromtimestamp(payload.get('time_last_update_unix', now.timestamp())).isoformat()
+                                })
+            except Exception as e:
+                logger.warning(f"USD/INR fallback quote failed: {e}")
+
+        if quote['value'] is None:
+            quote.update({
+                'value': 83.5,
+                'change': 0.0,
+                'change_percent': 0.0,
+                'source': 'Fallback',
+                'timestamp': now.isoformat()
+            })
+
+        self._quote_cache = quote
+        self._quote_cache_ts = now
+        return quote
     
     async def get_rates(self) -> List[CurrencyData]:
         results = []
@@ -262,22 +339,18 @@ class CurrencyImpactAnalyzer:
             try:
                 base, quote = pair.split('/')
                 if base == 'USD':
-                    ticker = yf.Ticker("USDINR=X")
-                    data = ticker.history(period='1d')
+                    usd_inr = await self.get_usd_inr_quote()
+                    current = usd_inr['value'] or 83.5
+                    change = usd_inr['change'] or 0.0
+                    change_pct = usd_inr['change_percent'] or 0.0
                     
-                    if len(data) > 0:
-                        current = data['Close'].iloc[-1]
-                        prev = data['Open'].iloc[0]
-                        change = current - prev
-                        change_pct = (change / prev) * 100
-                        
-                        results.append(CurrencyData(
-                            pair=pair,
-                            rate=round(current, 2),
-                            change=round(change, 2),
-                            change_percent=round(change_pct, 2),
-                            timestamp=datetime.now()
-                        ))
+                    results.append(CurrencyData(
+                        pair=pair,
+                        rate=round(current, 2),
+                        change=round(change, 2),
+                        change_percent=round(change_pct, 2),
+                        timestamp=datetime.now()
+                    ))
             except Exception as e:
                 logger.error(f"Currency rate error for {pair}: {e}")
         

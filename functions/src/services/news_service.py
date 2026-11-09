@@ -1,133 +1,140 @@
 import hashlib
 import feedparser
-import requests
+import logging
 from datetime import datetime
-from typing import List, Optional
-from bs4 import BeautifulSoup
+from typing import Dict, List, Optional, Tuple
 import asyncio
 import aiohttp
 
-from ..models.models import NewsArticle, SentimentType
+from ..models.models import NewsArticle
 from ..utils.config import config, get_env
+from .news_matching import canonical_story_key
+
+logger = logging.getLogger(__name__)
 
 class NewsService:
     def __init__(self):
         self.rss_feeds = config.news_sources.get('rss_feeds', [])
         self.news_api_key = get_env('NEWS_API_KEY', '')
-        
+        self._feed_cache: Dict[str, List[NewsArticle]] = {}
+        self._feed_validators: Dict[str, Dict[str, str]] = {}
+        self._last_successful: List[NewsArticle] = []
+        self._fetch_task: Optional[asyncio.Task] = None
+        self.last_fetch_status = {
+            'status': 'not_started',
+            'fresh_sources': 0,
+            'cached_sources': 0,
+            'failed_sources': 0,
+            'updated_at': None,
+        }
+
     async def fetch_all_news(self) -> List[NewsArticle]:
-        """Fetch news from all configured sources"""
-        all_articles = []
-        
-        rss_tasks = [self.fetch_rss_feed(feed) for feed in self.rss_feeds]
-        rss_results = await asyncio.gather(*rss_tasks, return_exceptions=True)
-        
-        for result in rss_results:
-            if isinstance(result, list):
-                all_articles.extend(result)
-        
-        if not all_articles:
-            all_articles = self._get_sample_news()
-        
-        all_articles.sort(key=lambda x: x.published_at, reverse=True)
-        return all_articles[:50]
-    
-    def _get_sample_news(self) -> List[NewsArticle]:
-        """Return sample news when APIs are unavailable"""
-        sample_news = [
-            NewsArticle(
-                id="1",
-                title="India announces new defense procurement policy amid border tensions",
-                description="The Indian government has unveiled a new defense procurement policy aimed at boosting domestic manufacturing and reducing reliance on foreign arms.",
-                source="Reuters India",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="India announces new defense procurement policy amid border tensions",
-                sentiment_score=0.3,
-                sentiment_label=SentimentType.BULLISH,
-                affected_sectors=["Defense"]
-            ),
-            NewsArticle(
-                id="2",
-                title="Oil prices surge as OPEC+ extends production cuts",
-                description="Crude oil prices jumped 3% after OPEC+ announced an extension of voluntary production cuts into the next quarter.",
-                source="Business Standard",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="Oil prices surge as OPEC+ extends production cuts",
-                sentiment_score=-0.2,
-                sentiment_label=SentimentType.BEARISH,
-                affected_sectors=["Energy"]
-            ),
-            NewsArticle(
-                id="3",
-                title="IT sector faces headwinds as US visa policies tighten",
-                description="Indian IT companies may face challenges as the US considers new visa regulations affecting tech workers.",
-                source="Economic Times",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="IT sector faces headwinds as US visa policies tighten",
-                sentiment_score=-0.4,
-                sentiment_label=SentimentType.BEARISH,
-                affected_sectors=["IT"]
-            ),
-            NewsArticle(
-                id="4",
-                title="RBI keeps repo rate unchanged, markets react positively",
-                description="The Reserve Bank of India maintained the repo rate at current levels, boosting banking and financial services stocks.",
-                source="MoneyControl",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="RBI keeps repo rate unchanged, markets react positively",
-                sentiment_score=0.5,
-                sentiment_label=SentimentType.STRONG_BULLISH,
-                affected_sectors=["Banking"]
-            ),
-            NewsArticle(
-                id="5",
-                title="Pharma companies gain on expectations of strong Q4 earnings",
-                description="Indian pharmaceutical stocks rallied on expectations of strong quarterly results driven by US generic drug sales.",
-                source="Business Standard",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="Pharma companies gain on expectations of strong Q4 earnings",
-                sentiment_score=0.4,
-                sentiment_label=SentimentType.BULLISH,
-                affected_sectors=["Pharma"]
-            ),
-            NewsArticle(
-                id="6",
-                title="Auto manufacturers report strong sales in February",
-                description="Major automobile companies reported robust sales numbers for February, driven by festive season demand and new model launches.",
-                source="The Hindu",
-                url="https://finance.yahoo.com",
-                published_at=datetime.now(),
-                raw_content="Auto manufacturers report strong sales in February",
-                sentiment_score=0.6,
-                sentiment_label=SentimentType.STRONG_BULLISH,
-                affected_sectors=["Auto"]
-            ),
-        ]
-        return sample_news
-    
-    async def fetch_rss_feed(self, feed_info: dict) -> List[NewsArticle]:
-        """Fetch and parse RSS feed"""
-        articles = []
+        """Fetch and deduplicate news with a single in-flight provider request."""
+        if self._fetch_task and not self._fetch_task.done():
+            return await asyncio.shield(self._fetch_task)
+        self._fetch_task = asyncio.create_task(self._fetch_all_news_once())
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(feed_info['url'], timeout=10) as response:
-                    if response.status == 200:
-                        content = await response.text()
-                        feed = feedparser.parse(content)
-                        
-                        for entry in feed.entries[:10]:
-                            article = self._parse_entry(entry, feed_info['name'])
-                            if article:
-                                articles.append(article)
-        except Exception as e:
-            pass
-        
+            return await asyncio.shield(self._fetch_task)
+        finally:
+            if self._fetch_task and self._fetch_task.done():
+                self._fetch_task = None
+
+    async def _fetch_all_news_once(self) -> List[NewsArticle]:
+        timeout = aiohttp.ClientTimeout(total=12, connect=4, sock_read=8)
+        connector = aiohttp.TCPConnector(limit=max(4, min(12, len(self.rss_feeds) * 2)))
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            results = await asyncio.gather(
+                *(self.fetch_rss_feed(feed, session) for feed in self.rss_feeds),
+                return_exceptions=True,
+            )
+
+        all_articles: List[NewsArticle] = []
+        fresh_sources = 0
+        cached_sources = 0
+        failed_sources = 0
+        for result in results:
+            if isinstance(result, Exception):
+                failed_sources += 1
+                continue
+            articles, state = result
+            all_articles.extend(articles)
+            if state == 'fresh':
+                fresh_sources += 1
+            elif state == 'cached':
+                cached_sources += 1
+            elif state == 'stale':
+                cached_sources += 1
+                failed_sources += 1
+            else:
+                failed_sources += 1
+
+        deduplicated: Dict[str, NewsArticle] = {}
+        for article in all_articles:
+            key = canonical_story_key(article.title, article.url)
+            current = deduplicated.get(key)
+            if current is None or article.published_at > current.published_at:
+                deduplicated[key] = article
+
+        articles = sorted(deduplicated.values(), key=lambda item: item.published_at, reverse=True)[:50]
+        if articles:
+            self._last_successful = articles
+        elif self._last_successful:
+            articles = list(self._last_successful)
+
+        status = 'fresh' if fresh_sources else ('cached' if articles else 'unavailable')
+        if failed_sources and articles:
+            status = 'partial'
+        self.last_fetch_status = {
+            'status': status,
+            'fresh_sources': fresh_sources,
+            'cached_sources': cached_sources,
+            'failed_sources': failed_sources,
+            'updated_at': datetime.utcnow().isoformat() + 'Z',
+        }
         return articles
+    
+    async def fetch_rss_feed(
+        self,
+        feed_info: dict,
+        session: Optional[aiohttp.ClientSession] = None,
+    ) -> Tuple[List[NewsArticle], str]:
+        """Fetch and parse RSS feed"""
+        articles: List[NewsArticle] = []
+        feed_url = feed_info['url']
+        own_session = session is None
+        if own_session:
+            session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12))
+        try:
+            validators = self._feed_validators.get(feed_url, {})
+            headers = {'Accept': 'application/rss+xml, application/xml, text/xml'}
+            if validators.get('etag'):
+                headers['If-None-Match'] = validators['etag']
+            if validators.get('last_modified'):
+                headers['If-Modified-Since'] = validators['last_modified']
+
+            async with session.get(feed_url, headers=headers) as response:
+                if response.status == 304:
+                    return list(self._feed_cache.get(feed_url, [])), 'cached'
+                response.raise_for_status()
+                content = await response.text()
+                feed = feedparser.parse(content)
+                for entry in feed.entries[:15]:
+                    article = self._parse_entry(entry, feed_info['name'])
+                    if article:
+                        articles.append(article)
+                self._feed_cache[feed_url] = articles
+                self._feed_validators[feed_url] = {
+                    'etag': response.headers.get('ETag', ''),
+                    'last_modified': response.headers.get('Last-Modified', ''),
+                }
+                return articles, 'fresh'
+        except Exception as e:
+            logger.warning("News feed unavailable (%s): %s", feed_info.get('name', feed_url), e)
+            cached = self._feed_cache.get(feed_url, [])
+            return list(cached), 'stale' if cached else 'failed'
+        finally:
+            if own_session and session is not None:
+                await session.close()
     
     def _parse_entry(self, entry, source: str) -> Optional[NewsArticle]:
         """Parse RSS entry into NewsArticle"""
@@ -142,7 +149,7 @@ class NewsService:
             try:
                 published_at = datetime(*entry.published_parsed[:6])
             except:
-                published_at = datetime.now()
+                published_at = datetime.utcnow()
             
             description = entry.get('summary', '')
             url = entry.get('link', '')

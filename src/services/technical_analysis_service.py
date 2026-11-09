@@ -7,7 +7,7 @@ calculations for NSE stocks, ported from the standalone app.py tracker.
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 
@@ -28,31 +28,31 @@ NIFTY_TICKER = '^NSEI'
 
 # Full NSE ticker universe (140+ stocks from app.py)
 ALL_TICKERS = sorted(list(set([
-    'BEL.NS', 'MAZDOCK.NS', 'HAL.NS', 'EICHERMOT.NS', 'TVSMOTOR.NS', 'HEROMOTOCO.NS',
-    'TITAN.NS', 'INDUSINDBK.NS', 'IREDA.NS', 'PIDILITIND.NS', 'BALAMINES.NS',
-    'DEEPAKNTR.NS', 'DRREDDY.NS', 'GODREJCP.NS', 'HINDALCO.NS', 'HINDPETRO.NS',
-    'HINDUNILVR.NS', 'HINDZINC.NS', 'ITC.NS', 'KOTAKBANK.NS', 'LUPIN.NS',
-    'MARUTI.NS', 'NTPC.NS', 'POWERGRID.NS', 'RELIANCE.NS', 'SBILIFE.NS', 'SBIN.NS',
-    'SUNPHARMA.NS', 'TATACONSUM.NS', 'TCS.NS', 'TATASTEEL.NS', 'TECHM.NS',
-    'ULTRACEMCO.NS', 'VEDL.NS', 'WIPRO.NS', 'YESBANK.NS', 'TATACHEM.NS',
-    'UPL.NS', 'SRF.NS', 'RALLIS.NS', 'COALINDIA.NS', 'TEJASNET.NS', 'NELCO.NS',
-    'LT.NS', 'ACC.NS', 'GRASIM.NS', 'TATAPOWER.NS', 'SJVN.NS', 'DMART.NS',
-    'BALRAMCHIN.NS', 'INDHOTEL.NS', 'LICI.NS', 'ANGELONE.NS', 'IEX.NS',
-    'HEG.NS', 'POLYCAB.NS', 'HAVELLS.NS', 'TITAGARH.NS', 'AFFLE.NS', 'NMDC.NS',
-    'JSWSTEEL.NS', 'SAIL.NS', 'INDIGO.NS', 'CIPLA.NS', 'GLENMARK.NS', 'DIVISLAB.NS',
-    'INFY.NS', 'INDIAMART.NS', 'TATACOMM.NS', 'BHARTIARTL.NS',
-    'TRIDENT.NS', 'WAAREEENER.NS', 'GRANULES.NS', 'MCX.NS', 'INDUSTOWER.NS',
-    'GRSE.NS', 'CDSL.NS', 'HDFCBANK.NS', 'MANAPPURAM.NS', 'NCC.NS',
-    'TRENT.NS', 'PNB.NS', 'GMRAIRPORT.NS', 'BDL.NS', 'KAYNES.NS', 'BSE.NS',
-    'IRCTC.NS', 'RVNL.NS', 'CAMS.NS', 'ICICIBANK.NS', 'AXISBANK.NS',
-    'BAJFINANCE.NS', 'BAJAJFINSV.NS', 'ONGC.NS', 'BPCL.NS', 'GAIL.NS',
-    'ADANIPORTS.NS', 'ADANIENT.NS', 'ADANIGREEN.NS', 'ADANIPOWER.NS',
-    'AMBUJACEM.NS', 'DABUR.NS', 'BRITANNIA.NS', 'NESTLEIND.NS', 'COLPAL.NS',
-    'MARICO.NS', 'SIEMENS.NS', 'ABB.NS', 'BHEL.NS', 'VOLTAS.NS', 'CUMMINSIND.NS',
-    'M&M.NS', 'ASHOKLEY.NS', 'BAJAJ-AUTO.NS', 'APOLLOTYRE.NS', 'MRF.NS',
-    'BANKBARODA.NS', 'CANBK.NS', 'UNIONBANK.NS', 'INDIANB.NS',
-    'FEDERALBNK.NS', 'RBLBANK.NS', 'AUBANK.NS', 'BANDHANBNK.NS', 'IDFCFIRSTB.NS',
-    'KARURVYSYA.NS', 'IOC.NS', 'HINDCOPPER.NS', 'MIDHANI.NS', 'PARAS.NS',
+    'BEL.NS','MAZDOCK.NS','HAL.NS','EICHERMOT.NS','TVSMOTOR.NS','HEROMOTOCO.NS',
+    'TMPV.NS','TITAN.NS','INDUSINDBK.NS','SAMMAANCAP.NS','IREDA.NS','LXCHEM.NS',
+    'PIDILITIND.NS','YASHO.NS','BALAMINES.NS','CLEAN.NS','DEEPAKNTR.NS','DRREDDY.NS',
+    'GODREJCP.NS','HINDALCO.NS','HINDPETRO.NS','HINDUNILVR.NS','HINDZINC.NS','ITC.NS',
+    'KOTAKBANK.NS','LUPIN.NS','MARUTI.NS','NTPC.NS','POWERGRID.NS','RELIANCE.NS',
+    'SBILIFE.NS','SBIN.NS','SUNPHARMA.NS','TATACONSUM.NS','TCS.NS','TATASTEEL.NS',
+    'TECHM.NS','ULTRACEMCO.NS','VEDL.NS','WIPRO.NS','YESBANK.NS','TATACHEM.NS',
+    'UPL.NS','SRF.NS','TATVA.NS','RALLIS.NS','COALINDIA.NS','TEJASNET.NS','NELCO.NS',
+    'LT.NS','ACC.NS','GRASIM.NS','NYKAA.NS','TATAPOWER.NS','SJVN.NS','DMART.NS',
+    'BALRAMCHIN.NS','INDHOTEL.NS','STOVEKRAFT.NS','LICI.NS','ANGELONE.NS','IEX.NS',
+    'HEG.NS','POLYCAB.NS','HAVELLS.NS','TITAGARH.NS','AFFLE.NS','ZEEL.NS','NMDC.NS',
+    'JSWSTEEL.NS','SAIL.NS','INDIGO.NS','CIPLA.NS','GLENMARK.NS','DIVISLAB.NS',
+    'INFY.NS','INDIAMART.NS','HAPPSTMNDS.NS','IDEA.NS','TATACOMM.NS','BHARTIARTL.NS',
+    'TRIDENT.NS','WAAREEENER.NS','GRANULES.NS','MCX.NS','OLAELEC.NS','INDUSTOWER.NS',
+    'GRSE.NS','CDSL.NS','HDFCBANK.NS','FACT.NS','MANAPPURAM.NS','PAYTM.NS','NCC.NS',
+    'TRENT.NS','PNB.NS','GMRAIRPORT.NS','BDL.NS','KAYNES.NS','BSE.NS','NBCC.NS',
+    'IRCTC.NS','RVNL.NS','CAMS.NS','GRAPHITE.NS','IDEAFORGE.NS','BAJAJHFL.NS',
+    'ICICIBANK.NS','AXISBANK.NS','BAJFINANCE.NS','BAJAJFINSV.NS','ONGC.NS','BPCL.NS',
+    'GAIL.NS','ADANIPORTS.NS','ADANIENT.NS','ADANIGREEN.NS','ADANIPOWER.NS',
+    'AMBUJACEM.NS','DABUR.NS','BRITANNIA.NS','NESTLEIND.NS','COLPAL.NS','MARICO.NS',
+    'SIEMENS.NS','ABB.NS','BHEL.NS','VOLTAS.NS','CUMMINSIND.NS','M&M.NS',
+    'ASHOKLEY.NS','TATAMOTORS.NS','BAJAJ-AUTO.NS','APOLLOTYRE.NS','MRF.NS',
+    'BANKBARODA.NS','CANBK.NS','UNIONBANK.NS','IOB.NS','INDIANB.NS',
+    'FEDERALBNK.NS','RBLBANK.NS','AUBANK.NS','BANDHANBNK.NS','IDFCFIRSTB.NS',
+    'SOUTHBANK.NS','KARURVYSYA.NS','DCBBANK.NS','IOC.NS','HINDCOPPER.NS'
 ])))
 
 
@@ -61,6 +61,7 @@ class TechnicalData:
     """Technical indicators for a single stock."""
     symbol: str          # without .NS
     ltp: float = 0.0
+    change_percent: float = 0.0
     velocity: float = 0.0
     ac: float = 0.0
     psar_af: float = INITIAL_AF
@@ -191,6 +192,9 @@ def _analyze_single(ticker: str, ticker_data: pd.DataFrame, high_52w: float = 0.
             return None
 
         current_price = _safe_float(ticker_data['Close'].iloc[-1])
+        previous_index = max(0, len(ticker_data) - 13)
+        previous_price = _safe_float(ticker_data['Close'].iloc[previous_index])
+        change_percent = ((current_price - previous_price) / previous_price) * 100 if previous_price > 0 else 0.0
         analyzed, reversals = calculate_ac(ticker_data)
 
         velocity_val = _safe_float(analyzed['Velocity'].iloc[-1])
@@ -219,6 +223,7 @@ def _analyze_single(ticker: str, ticker_data: pd.DataFrame, high_52w: float = 0.
         return TechnicalData(
             symbol=clean_symbol,
             ltp=round(current_price, 2),
+            change_percent=round(change_percent, 2),
             velocity=round(velocity_val, 4),
             ac=round(ac_val, 4),
             psar_af=round(psar_af, 2),
@@ -236,19 +241,25 @@ def _analyze_single(ticker: str, ticker_data: pd.DataFrame, high_52w: float = 0.
 
 
 def _extract_ticker_df(data: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
-    """Extract single ticker dataframe from a multi-ticker yfinance bulk download."""
+    """Extract one ticker frame from yfinance single or multi-ticker downloads."""
     try:
+        if data is None or data.empty:
+            return None
         if isinstance(data.columns, pd.MultiIndex):
-            lvl0 = data.columns.get_level_values(0)
-            lvl1 = data.columns.get_level_values(1)
-            if ticker in lvl0:
+            level_0 = data.columns.get_level_values(0)
+            level_1 = data.columns.get_level_values(1)
+            if ticker in level_0:
                 return data.xs(ticker, axis=1, level=0).dropna(how='all')
-            elif ticker in lvl1:
+            if ticker in level_1:
                 return data.xs(ticker, axis=1, level=1).dropna(how='all')
             return None
         return data.dropna(how='all')
     except Exception:
         return None
+
+
+def _chunks(items: List[str], size: int) -> List[List[str]]:
+    return [items[i:i + size] for i in range(0, len(items), size)]
 
 
 # ---- Async Service ----
@@ -261,40 +272,54 @@ class TechnicalAnalysisService:
         self._highs_52w: Dict[str, float] = {}
         self._last_fetch: Optional[float] = None
         self._fetching = False
+        self._macro_cache: Dict[str, Dict] = {}
+        self._macro_cache_ts: Dict[str, float] = {}
+
+        logger.info("Technical Analysis Service configured with Yahoo Finance")
+
+    @property
+    def is_broker_configured(self) -> bool:
+        return True
 
     def get_cached(self) -> Dict[str, TechnicalData]:
         return dict(self._cache)
 
     async def fetch_52w_highs(self) -> Dict[str, float]:
-        """Fetch 52-week highs for all tickers (runs once at startup)."""
-        logger.info("Fetching 52-week highs for all tickers…")
+        """Fetch 52-week highs for all tickers through Yahoo Finance."""
+        logger.info("Fetching 52-week highs for all tickers through Yahoo Finance...")
         loop = asyncio.get_event_loop()
 
-        def _download():
-            try:
-                data = yf.download(
-                    ALL_TICKERS, period="1y", interval="1d",
-                    progress=False, group_by='ticker', threads=True, timeout=60
-                )
-                highs: Dict[str, float] = {}
-                for ticker in ALL_TICKERS:
+        def _download_yahoo():
+            highs: Dict[str, float] = {}
+            for batch in _chunks(ALL_TICKERS, 40):
+                try:
+                    data = yf.download(
+                        batch,
+                        period="1y",
+                        interval="1d",
+                        progress=False,
+                        group_by='ticker',
+                        threads=True,
+                        timeout=60,
+                    )
+                except Exception as e:
+                    logger.error(f"Yahoo 52w batch fetch failed: {e}")
+                    data = pd.DataFrame()
+
+                for ticker in batch:
                     t_df = _extract_ticker_df(data, ticker)
                     if t_df is not None and not t_df.empty and 'High' in t_df.columns:
                         highs[ticker] = _safe_float(t_df['High'].max())
                     else:
                         highs[ticker] = 0.0
-                return highs
-            except Exception as e:
-                logger.error(f"52W high fetch failed: {e}")
-                return {}
+            return highs
 
-        result = await loop.run_in_executor(None, _download)
-        self._highs_52w = result
-        logger.info(f"52W highs fetched for {len(result)} tickers")
-        return result
+        self._highs_52w = await loop.run_in_executor(None, _download_yahoo)
+        logger.info(f"52W highs fetched for {len(self._highs_52w)} tickers via Yahoo Finance.")
+        return self._highs_52w
 
     async def fetch_all(self) -> Dict[str, TechnicalData]:
-        """Fetch fresh intraday data and compute technical indicators for all tickers."""
+        """Fetch fresh intraday data and compute technical indicators through Yahoo Finance."""
         if self._fetching:
             return self._cache
 
@@ -302,40 +327,41 @@ class TechnicalAnalysisService:
         start = time.time()
         loop = asyncio.get_event_loop()
 
-        def _download():
-            return yf.download(
-                ALL_TICKERS,
-                period="2d",
-                interval="5m",
-                prepost=False,
-                progress=False,
-                group_by='ticker',
-                threads=True,
-                timeout=60
-            )
-
-        try:
-            data = await loop.run_in_executor(None, _download)
-
-            if data is None or (hasattr(data, 'empty') and data.empty):
-                logger.warning("Technical data fetch returned empty dataframe")
-                return self._cache
-
+        def _download_yahoo():
             results: Dict[str, TechnicalData] = {}
-            for ticker in ALL_TICKERS:
-                t_df = _extract_ticker_df(data, ticker)
-                if t_df is None or t_df.empty:
-                    continue
-                h52 = self._highs_52w.get(ticker, 0.0)
-                td = _analyze_single(ticker, t_df, h52)
-                if td:
-                    results[td.symbol] = td
+            for batch in _chunks(ALL_TICKERS, 40):
+                try:
+                    data = yf.download(
+                        batch,
+                        period="5d",
+                        interval="5m",
+                        prepost=False,
+                        progress=False,
+                        group_by='ticker',
+                        threads=True,
+                        timeout=60,
+                    )
+                except Exception as e:
+                    logger.error(f"Yahoo intraday batch fetch failed: {e}")
+                    data = pd.DataFrame()
 
-            self._cache = results
-            self._last_fetch = time.time()
-            logger.info(f"Technical analysis complete: {len(results)} stocks in {time.time()-start:.1f}s")
+                for ticker in batch:
+                    t_df = _extract_ticker_df(data, ticker)
+                    if t_df is None or t_df.empty:
+                        continue
+                    tdata = _analyze_single(ticker, t_df, self._highs_52w.get(ticker, 0.0))
+                    if tdata:
+                        results[tdata.symbol] = tdata
             return results
 
+        try:
+            if not self._highs_52w:
+                await self.fetch_52w_highs()
+            results = await loop.run_in_executor(None, _download_yahoo)
+            self._cache = results
+            self._last_fetch = time.time()
+            logger.info(f"Technical analysis via Yahoo Finance complete: {len(results)} stocks in {time.time()-start:.1f}s")
+            return results
         except Exception as e:
             logger.error(f"Technical fetch_all error: {e}")
             return self._cache
@@ -343,25 +369,25 @@ class TechnicalAnalysisService:
             self._fetching = False
 
     async def get_nifty(self) -> Optional[Dict]:
-        """Fetch NIFTY 50 technical data."""
+        """Fetch NIFTY 50 technical data through Yahoo Finance."""
         loop = asyncio.get_event_loop()
 
         def _nifty():
             try:
-                data = yf.download(NIFTY_TICKER, period='2d', interval='5m',
-                                   progress=False, timeout=20)
-                if data is None or data.empty:
+                data = yf.download(
+                    NIFTY_TICKER,
+                    period='5d',
+                    interval='5m',
+                    progress=False,
+                    timeout=30,
+                )
+                df = _extract_ticker_df(data, NIFTY_TICKER)
+                if df is None or df.empty or len(df) < 10:
                     return None
 
-                if isinstance(data.columns, pd.MultiIndex):
-                    lvl = data.columns.get_level_values(0)
-                    if NIFTY_TICKER in lvl:
-                        data = data.xs(NIFTY_TICKER, axis=1, level=0).dropna(how='all')
+                analyzed, reversals = calculate_ac(df)
+                analyzed['Close'] = analyzed['Close'].ffill()
 
-                if data.empty or len(data) < 10:
-                    return None
-
-                analyzed, reversals = calculate_ac(data)
                 return {
                     'ltp': round(_safe_float(analyzed['Close'].iloc[-1]), 2),
                     'velocity': round(_safe_float(analyzed['Velocity'].iloc[-1]), 4),
@@ -375,6 +401,63 @@ class TechnicalAnalysisService:
                 return None
 
         return await loop.run_in_executor(None, _nifty)
+
+    async def get_crude_ltp(self) -> Dict:
+        cached = self._macro_cache.get('crude')
+        cached_at = self._macro_cache_ts.get('crude', 0)
+        if cached and time.time() - cached_at < 60:
+            return cached
+
+        quote = {
+            'symbol': 'CL=F',
+            'label': 'WTI Crude',
+            'value': None,
+            'change': None,
+            'change_percent': None,
+            'currency': 'USD',
+            'source': 'Yahoo Finance',
+            'timestamp': datetime.now().isoformat()
+        }
+
+        loop = asyncio.get_event_loop()
+
+        def _fetch():
+            try:
+                data = yf.download(
+                    'CL=F',
+                    period='2d',
+                    interval='5m',
+                    progress=False,
+                    timeout=20,
+                )
+                df = _extract_ticker_df(data, 'CL=F')
+                if df is None or df.empty or 'Close' not in df.columns:
+                    return quote
+                close = df['Close'].dropna()
+                if close.empty:
+                    return quote
+                latest = _safe_float(close.iloc[-1])
+                previous = _safe_float(close.iloc[-2]) if len(close) > 1 else None
+                change = latest - previous if previous else None
+                change_percent = (change / previous) * 100 if previous else None
+                return {
+                    'symbol': 'CL=F',
+                    'label': 'WTI Crude',
+                    'value': round(latest, 2),
+                    'change': round(change, 2) if change is not None else None,
+                    'change_percent': round(change_percent, 3) if change_percent is not None else None,
+                    'currency': 'USD',
+                    'source': 'Yahoo Finance',
+                    'timestamp': datetime.now().isoformat()
+                }
+            except Exception as e:
+                logger.error(f"Yahoo crude fetch failed: {e}")
+                return quote
+
+        result = await loop.run_in_executor(None, _fetch)
+        self._macro_cache['crude'] = result
+        self._macro_cache_ts['crude'] = time.time()
+        return result
 
     def compute_market_summary(self) -> Dict:
         """Compute summary stats over current cached technical data."""

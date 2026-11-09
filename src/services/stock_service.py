@@ -1,4 +1,4 @@
-import yfinance as yf
+# yfinance removed
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import asyncio
@@ -17,24 +17,17 @@ class StockService:
         stock_info = {}
         
         async def fetch_single(symbol):
-            try:
-                ticker = yf.Ticker(f"{symbol}.NS")
-                info = ticker.info
-                
-                await asyncio.sleep(0.5)
-                
-                return symbol, {
-                    'name': info.get('shortName', symbol),
-                    'current_price': info.get('currentPrice', info.get('previousClose', 0)),
-                    'change': info.get('regularMarketChange', 0),
-                    'change_percent': info.get('regularMarketChangePercent', 0),
-                    'volume': info.get('volume', 0),
-                    'market_cap': info.get('marketCap', 0),
-                    'day_high': info.get('dayHigh', 0),
-                    'day_low': info.get('dayLow', 0),
-                }
-            except Exception as e:
-                return symbol, {'name': symbol, 'error': str(e)[:50]}
+            await asyncio.sleep(0.1)
+            return symbol, {
+                'name': symbol,
+                'current_price': 0.0,
+                'change': 0.0,
+                'change_percent': 0.0,
+                'volume': 0,
+                'market_cap': 0,
+                'day_high': 0,
+                'day_low': 0,
+            }
         
         tasks = [fetch_single(s) for s in symbols[:3]]
         results = await asyncio.gather(*tasks, return_exceptions=True)

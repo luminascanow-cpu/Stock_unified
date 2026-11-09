@@ -47,6 +47,7 @@ class StockPrediction:
 
     # --- Technical fields (from PSAR/AC tracker) ---
     ltp: Optional[float] = None
+    change_percent: Optional[float] = None
     velocity: Optional[float] = None
     ac: Optional[float] = None
     psar_af: Optional[float] = None
@@ -97,3 +98,4 @@ class DashboardData:
     nifty: Optional[Dict] = None
     market_summary: Optional[Dict] = None
     technical_updated: Optional[str] = None
+    upcoming_events: List[Dict] = field(default_factory=list)

@@ -11,9 +11,8 @@ try:
     NSEPY_AVAILABLE = True
 except ImportError:
     NSEPY_AVAILABLE = False
-    logging.warning("nsepython not installed, falling back to yfinance")
+    logging.warning("nsepython not installed")
 
-import yfinance as yf
 import aiohttp
 
 from ..models.models import StockPrediction, SentimentType, ImpactLevel
@@ -52,7 +51,7 @@ class NSEService:
     
     async def get_quote(self, symbol: str) -> Optional[Dict]:
         if not self.enabled:
-            return await self._get_yahoo_quote(symbol)
+            return None
         
         cache_key = self._get_cache_key(symbol)
         cached = self.cache.get(cache_key)
@@ -65,8 +64,8 @@ class NSEService:
                 self.cache.set(cache_key, quote)
             return quote
         except Exception as e:
-            logger.warning(f"NSE fetch failed for {symbol}, falling back to yfinance: {e}")
-            return await self._get_yahoo_quote(symbol)
+            logger.warning(f"NSE fetch failed for {symbol}: {e}")
+            return None
     
     async def _fetch_nse_quote(self, symbol: str) -> Optional[Dict]:
         try:
@@ -109,31 +108,7 @@ class NSEService:
         }
     
     async def _get_yahoo_quote(self, symbol: str) -> Optional[Dict]:
-        try:
-            ticker = yf.Ticker(f"{symbol}.NS")
-            info = ticker.info
-            
-            return {
-                'symbol': symbol,
-                'name': info.get('shortName', symbol),
-                'current_price': info.get('currentPrice', info.get('previousClose', 0)),
-                'change': info.get('regularMarketChange', 0),
-                'change_percent': info.get('regularMarketChangePercent', 0),
-                'open': info.get('open', 0),
-                'high': info.get('dayHigh', 0),
-                'low': info.get('dayLow', 0),
-                'previous_close': info.get('previousClose', 0),
-                'volume': info.get('volume', 0),
-                'day_high': info.get('dayHigh', 0),
-                'day_low': info.get('dayLow', 0),
-                'year_high': info.get('fiftyTwoWeekHigh', 0),
-                'year_low': info.get('fiftyTwoWeekLow', 0),
-                'market_cap': info.get('marketCap', 0),
-                'timestamp': datetime.now().isoformat()
-            }
-        except Exception as e:
-            logger.error(f"Yahoo finance error for {symbol}: {e}")
-            return None
+        return None
     
     async def get_multiple_quotes(self, symbols: List[str]) -> Dict[str, Dict]:
         results = {}
