@@ -29,6 +29,20 @@ keep startup time and memory usage within the service limits.
 
 Market prices are sourced from Yahoo Finance, so no broker token is required for live technical data. Set `NEWS_API_KEY` in `.env` only if you want the optional NewsAPI feed in addition to RSS sources.
 
+### Zerodha Kite login
+
+Set `KITE_API_KEY` and `KITE_API_SECRET` on the server, then register this
+redirect URL in the Kite developer console:
+
+```text
+https://stock-monitor-pro.onrender.com/auth/kite/callback
+```
+
+Start the daily Kite login at
+`https://stock-monitor-pro.onrender.com/auth/kite/login`. The callback exchanges
+the one-time request token on the server and never returns the access token to
+the browser. Check connection state at `/auth/kite/status`.
+
 ## Run
 
 ```bash

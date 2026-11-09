@@ -12,3 +12,7 @@ services:
         value: 3.11.0 # Specify a compatible Python version
       - key: NEWS_API_KEY
         sync: false
+      - key: KITE_API_KEY
+        sync: false
+      - key: KITE_API_SECRET
+        sync: false

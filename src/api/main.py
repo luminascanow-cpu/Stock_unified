@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict
+from urllib.parse import parse_qs
 import asyncio
 import json
 import io
@@ -17,6 +18,7 @@ from ..services.nse_service import nse_service, market_hours_service
 from ..services.india_specific import india_service
 from ..services.alert_service import alert_manager
 from ..services.scheduler_service import market_hours_scheduler
+from ..services.kite_auth_service import kite_auth_service, KiteAuthError
 from ..models.models import DashboardData
 from ..utils.config import config
 
@@ -194,7 +196,66 @@ async def refresh_data():
 
 @app.get("/api/broker/status")
 async def broker_status():
-    return {"configured": True, "source": "Yahoo Finance", "requires_token": False}
+    kite_status = kite_auth_service.status()
+    return {
+        **kite_status,
+        "source": "Zerodha Kite" if kite_status["authenticated"] else "Yahoo Finance",
+        "fallback_source": "Yahoo Finance",
+        "login_url": "/auth/kite/login" if kite_status["configured"] else None,
+    }
+
+
+@app.get("/auth/kite/login")
+async def kite_login():
+    try:
+        response = RedirectResponse(kite_auth_service.create_login_url(), status_code=302)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    except KiteAuthError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/auth/kite/callback", response_class=HTMLResponse)
+async def kite_callback(
+    request: Request,
+    request_token: Optional[str] = None,
+    status: Optional[str] = None,
+):
+    state = request.query_params.get("state")
+    if not state:
+        redirect_params = request.query_params.get("redirect_params", "")
+        state = parse_qs(redirect_params).get("state", [None])[0]
+    try:
+        kite_auth_service.validate_state(state)
+        if status and status.lower() != "success":
+            raise KiteAuthError("Kite login was not completed successfully.")
+        await kite_auth_service.exchange_request_token(request_token or "")
+    except KiteAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    response = HTMLResponse(
+        """
+        <!doctype html>
+        <html lang="en">
+          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kite connected</title></head>
+          <body style="font-family:system-ui;background:#08111f;color:#e7eef8;display:grid;place-items:center;min-height:100vh;margin:0">
+            <main style="max-width:34rem;padding:2rem;border:1px solid #2d3b50;border-radius:16px;background:#101b2b">
+              <h1 style="margin-top:0;color:#35efbd">Kite connected</h1>
+              <p>Authentication completed successfully. You can close this window and return to Confluence Terminal.</p>
+            </main>
+          </body>
+        </html>
+        """
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.get("/auth/kite/status")
+async def kite_status():
+    response = JSONResponse(kite_auth_service.status())
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.get("/api/macro")
