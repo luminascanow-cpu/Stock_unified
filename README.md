@@ -22,6 +22,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+The default install uses the lightweight sentiment engine. To enable the
+optional FinBERT model locally, install `requirements-ml.txt` instead and set
+`FINBERT_ENABLED=true`. FinBERT is disabled by default on Render's free tier to
+keep startup time and memory usage within the service limits.
+
 Market prices are sourced from Yahoo Finance, so no broker token is required for live technical data. Set `NEWS_API_KEY` in `.env` only if you want the optional NewsAPI feed in addition to RSS sources.
 
 ## Run

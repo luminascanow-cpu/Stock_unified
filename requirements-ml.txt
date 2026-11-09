@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Optional FinBERT dependencies. The Render web service uses the lightweight
+# fallback by default; install this file and set FINBERT_ENABLED=true to opt in.
+transformers>=4.36.2
+torch>=2.1.2
