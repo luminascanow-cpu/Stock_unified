@@ -1,5 +1,6 @@
 import re
 import logging
+import os
 from typing import List, Tuple, Dict, Optional
 from datetime import datetime
 
@@ -8,14 +9,6 @@ logger = logging.getLogger(__name__)
 from ..models.models import NewsArticle, SentimentType
 from ..utils.config import config
 from .news_matching import contains_any, contains_phrase
-
-try:
-    from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-    import torch
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    logger.warning("Transformers not installed, using fallback sentiment analysis")
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -33,22 +26,49 @@ class FinBERTService:
         self.india_context = self.sentiment_config.get('india_context', {})
         self._model = None
         self._tokenizer = None
+        self._torch = None
         self._fallback = None
-        
-        if TRANSFORMERS_AVAILABLE:
-            try:
-                self._load_model()
-            except Exception as e:
-                logger.error(f"Failed to load FinBERT: {e}")
-                self._model = None
-        else:
-            self._init_fallback()
+        self._model_load_attempted = False
+        self._model_enabled = self._finbert_enabled()
+
+        # Keep module import fast so web servers can bind their port before any
+        # optional ML model is downloaded. The fallback is ready immediately.
+        self._init_fallback()
+
+    def _finbert_enabled(self) -> bool:
+        configured = os.getenv('FINBERT_ENABLED')
+        if configured is not None:
+            return configured.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+        # Render's free instances do not have enough memory for PyTorch plus
+        # FinBERT. Deployments can opt back in with FINBERT_ENABLED=true.
+        return not bool(os.getenv('RENDER'))
+
+    def _ensure_model(self) -> bool:
+        if self._model is not None:
+            return True
+        if not self._model_enabled or self._model_load_attempted:
+            return False
+
+        self._model_load_attempted = True
+        try:
+            self._load_model()
+        except Exception as e:
+            logger.error("Failed to load FinBERT; using fallback sentiment: %s", e)
+            self._model = None
+            self._tokenizer = None
+            self._torch = None
+        return self._model is not None
     
     def _load_model(self):
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        import torch
+
         logger.info(f"Loading FinBERT model: {self.model_name}")
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self._model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self._model.eval()
+        self._torch = torch
         logger.info("FinBERT model loaded successfully")
     
     def _init_fallback(self):
@@ -56,18 +76,18 @@ class FinBERTService:
             self._fallback = FallbackSentiment()
     
     def analyze(self, text: str) -> Tuple[float, str]:
-        if self._model is None:
+        if not self._ensure_model():
             if self._fallback:
                 return self._fallback.analyze(text)
             return 0.0, "neutral"
         
         try:
             inputs = self._tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
-            with torch.no_grad():
+            with self._torch.no_grad():
                 outputs = self._model(**inputs)
             
-            probs = torch.softmax(outputs.logits, dim=1)
-            pred_idx = torch.argmax(probs, dim=1).item()
+            probs = self._torch.softmax(outputs.logits, dim=1)
+            pred_idx = self._torch.argmax(probs, dim=1).item()
             
             label = self._label_for_index(pred_idx)
             confidence = probs[0][pred_idx].item()
@@ -85,7 +105,7 @@ class FinBERTService:
     def analyze_batch(self, texts: List[str]) -> List[Tuple[float, str]]:
         if not texts:
             return []
-        if self._model is None:
+        if not self._ensure_model():
             return [self.analyze(text) for text in texts]
 
         try:
@@ -96,10 +116,10 @@ class FinBERTService:
                 padding=True,
                 max_length=512,
             )
-            with torch.no_grad():
+            with self._torch.no_grad():
                 outputs = self._model(**inputs)
-            probabilities = torch.softmax(outputs.logits, dim=1)
-            indices = torch.argmax(probabilities, dim=1).tolist()
+            probabilities = self._torch.softmax(outputs.logits, dim=1)
+            indices = self._torch.argmax(probabilities, dim=1).tolist()
             score_map = {'positive': 0.5, 'neutral': 0.0, 'negative': -0.5}
             return [
                 (
