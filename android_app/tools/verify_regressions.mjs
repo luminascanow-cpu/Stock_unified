@@ -19,8 +19,15 @@ function assert(condition, message) {
 }
 
 function functionSource(name, nextName) {
-  const start = source.indexOf(`    function ${name}(`);
-  const end = source.indexOf(`    function ${nextName}(`, start + 1);
+  const functionIndex = (functionName, from = 0) => {
+    const candidates = [
+      source.indexOf(`    function ${functionName}(`, from),
+      source.indexOf(`    async function ${functionName}(`, from)
+    ].filter((index) => index >= 0);
+    return candidates.length ? Math.min(...candidates) : -1;
+  };
+  const start = functionIndex(name);
+  const end = functionIndex(nextName, start + 1);
   assert(start >= 0 && end > start, `Unable to extract ${name}`);
   return source.slice(start, end).trim();
 }
@@ -133,6 +140,36 @@ assert(
   istDayKey(new Date("2026-11-09T19:00:00.000Z")) === "2026-11-10",
   "daily Kite prompts must use the India calendar day"
 );
+
+const mergeKiteQuotesIntoDashboard = new Function(
+  `${functionSource("normalizeCustomSymbol", "customStockListViewModel")}; ${functionSource("mergeKiteQuotesIntoDashboard", "fetchKiteQuotesForDashboard")}; return mergeKiteQuotesIntoDashboard;`
+)();
+const kiteOverlay = mergeKiteQuotesIntoDashboard(
+  {
+    watchlist_quotes: [{symbol: "INFY", ltp: 100, quote_source: "Yahoo Finance"}],
+    top_predictions: [{symbol: "INFY", rsi: 52, psar_af: 0.08}],
+    quote_epoch: 100
+  },
+  {
+    requested_count: 1,
+    quote_count: 1,
+    quotes: [{symbol: "INFY", available: true, ltp: 110, previous_close: 108, change: 2, change_percent: 1.8519, session_volume: 1000, quote_epoch: 200, quote_timestamp: "2026-11-10 15:30:00"}]
+  }
+);
+assert(kiteOverlay.watchlist_quotes[0].ltp === 110, "Kite must replace the Yahoo quote tuple when authenticated");
+assert(kiteOverlay.top_predictions[0].rsi === 52, "Kite quote overlay must preserve technical indicators");
+assert(kiteOverlay.top_predictions[0].session_volume === 1000, "Kite session volume must reach sector-flow rows");
+assert(kiteOverlay.quote_source.includes("Yahoo Finance fallback"), "Kite overlay must retain an explicit fallback source");
+const partialKiteOverlay = mergeKiteQuotesIntoDashboard(
+  {watchlist_quotes: [{symbol: "INFY", ltp: 100, session_volume: 900, quote_epoch: 100}]},
+  {requested_count: 1, quote_count: 1, quotes: [{symbol: "INFY", ltp: 110, quote_epoch: 200}]}
+);
+assert(partialKiteOverlay.watchlist_quotes[0].ltp === 100, "partial Kite tuples must preserve the complete Yahoo row atomically");
+const zeroCloseKiteOverlay = mergeKiteQuotesIntoDashboard(
+  {watchlist_quotes: [{symbol: "INFY", ltp: 100, change: 1, change_percent: 1}]},
+  {quotes: [{symbol: "INFY", available: true, ltp: 110, previous_close: 0, change: 110, change_percent: 0, session_volume: 1000, quote_epoch: 200}]}
+);
+assert(zeroCloseKiteOverlay.watchlist_quotes[0].ltp === 100, "zero-close Kite tuples must not retain mixed Yahoo change fields");
 
 const mergeTechnicalRows = new Function(
   `
@@ -319,7 +356,13 @@ assert(source.includes('id="sectorFlowTitle">SECTORS IN FOCUS'), "Home must expo
 assert(source.includes('id="kiteSessionTitle">Broker session'), "Home must reserve a stable Kite session card");
 assert(source.includes('id="kiteAuthDialog" role="dialog" aria-modal="true"'), "daily Kite login must use an app-owned accessible dialog");
 assert(source.includes('KITE_PROMPT_DAY_KEY = "stockUnifiedKitePromptDayV1"'), "the daily Kite prompt must persist only its last India calendar day");
-assert(source.includes('checkKiteSession({offerDailyPrompt: true});\n        syncOnce();'), "returning from Zerodha login must recheck Kite before market sync");
+assert(source.includes('KITE_CLIENT_SESSION_KEY = "stockUnifiedKiteClientSessionV1"'), "the app must retain its opaque daily Kite authorization handle");
+assert(source.includes('KITE_APP_SESSION_URL = "https://stock-monitor-pro.onrender.com/auth/kite/app-session"'), "Kite login must start with a server-bound app session");
+assert(source.includes('KITE_QUOTES_URL = "https://stock-monitor-pro.onrender.com/api/kite/quotes"'), "authenticated Android sessions must request Kite quote snapshots");
+assert(source.includes('Authorization: "Bearer " + kiteClientSessionToken'), "Kite quote requests must use the app-session bearer token");
+assert(source.includes("fetchKiteQuotesForDashboard(dashboardResult.value)"), "Kite quotes must overlay the native dashboard before rendering Sector Map");
+assert(source.includes("if (kiteRefreshSatisfiedDuringSync) kiteRefreshPending = false;"), "a successful in-flight Kite overlay must consume the startup refresh request");
+assert(source.includes('checkKiteSession({offerDailyPrompt: true}).finally(syncOnce);'), "returning from Zerodha login must recheck Kite before market sync");
 assert(source.includes("Yahoo Finance remains active while Kite is disconnected"), "the daily login dialog must name the non-blocking fallback");
 assert(!source.includes('type="password"'), "the Android asset must never request a broker password or API secret");
 assert(!source.includes("KITE_API_SECRET"), "the Kite API secret must remain server-side");

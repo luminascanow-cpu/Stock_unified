@@ -18,10 +18,13 @@ class KiteAuthService:
 
     def __init__(self, state_ttl_seconds: int = 600):
         self.state_ttl_seconds = state_ttl_seconds
-        self._pending_states: Dict[str, float] = {}
+        self.max_pending_states = 256
+        self._pending_states: Dict[str, Dict[str, Any]] = {}
         self._access_token: Optional[str] = None
         self._session: Dict[str, Any] = {}
         self._session_day: Optional[str] = None
+        self._client_sessions: Dict[str, str] = {}
+        self._client_request_at: Dict[str, float] = {}
 
     @property
     def api_key(self) -> str:
@@ -40,25 +43,41 @@ class KiteAuthService:
         return bool(self.api_key and self.api_secret)
 
     def create_login_url(self) -> str:
+        return self._create_login_url()
+
+    def create_app_login(self) -> Dict[str, str]:
+        client_session_token = secrets.token_urlsafe(48)
+        return {
+            "login_url": self._create_login_url(client_session_token),
+            "client_session_token": client_session_token,
+        }
+
+    def _create_login_url(self, client_session_token: Optional[str] = None) -> str:
         if not self.is_configured():
             raise KiteAuthError(
                 "Kite is not configured. Set KITE_API_KEY and KITE_API_SECRET on the server."
             )
 
         self._discard_expired_states()
+        while len(self._pending_states) >= self.max_pending_states:
+            self._pending_states.pop(next(iter(self._pending_states)))
         state = secrets.token_urlsafe(32)
-        self._pending_states[state] = time.time() + self.state_ttl_seconds
+        self._pending_states[state] = {
+            "expires_at": time.time() + self.state_ttl_seconds,
+            "client_session_token": client_session_token,
+        }
         redirect_params = urlencode({"state": state})
         return f"{self.login_endpoint}?{urlencode({'v': '3', 'api_key': self.api_key, 'redirect_params': redirect_params})}"
 
-    def validate_state(self, state: Optional[str]) -> None:
+    def validate_state(self, state: Optional[str]) -> Optional[str]:
         self._discard_expired_states()
         if not state:
             raise KiteAuthError("Missing Kite login state. Start again from /auth/kite/login.")
 
-        expiry = self._pending_states.pop(state, None)
-        if expiry is None or expiry < time.time():
+        pending = self._pending_states.pop(state, None)
+        if pending is None or float(pending.get("expires_at", 0)) < time.time():
             raise KiteAuthError("Invalid or expired Kite login state. Start the login again.")
+        return pending.get("client_session_token")
 
     @staticmethod
     def checksum(api_key: str, request_token: str, api_secret: str) -> str:
@@ -112,6 +131,10 @@ class KiteAuthService:
             )
 
         authenticated_at = datetime.now(timezone.utc).isoformat()
+        # A new broker login supersedes every older app authorization. The
+        # callback activates only the app session tied to this exact login.
+        self._client_sessions = {}
+        self._client_request_at = {}
         self._access_token = access_token
         self._session_day = self._today_in_india()
         self._session = {
@@ -133,21 +156,58 @@ class KiteAuthService:
             "requires_daily_login": True,
         }
 
+    def clear_session(self) -> None:
+        self._access_token = None
+        self._session = {}
+        self._session_day = None
+        self._client_sessions = {}
+        self._client_request_at = {}
+
+    def clear_session_if_token(self, access_token: str) -> bool:
+        current = self._access_token or ""
+        candidate = access_token or ""
+        if not current or not secrets.compare_digest(current, candidate):
+            return False
+        self.clear_session()
+        return True
+
+    def activate_client_session(self, client_session_token: Optional[str]) -> None:
+        if not client_session_token or not self.access_token:
+            return
+        self._client_sessions[client_session_token] = self._today_in_india()
+
+    def is_client_session_authorized(self, client_session_token: Optional[str]) -> bool:
+        self._expire_stale_session()
+        if not self._access_token or not client_session_token:
+            return False
+        session_day = self._client_sessions.get(client_session_token)
+        return session_day == self._today_in_india()
+
+    def allow_client_quote_request(
+        self, client_session_token: Optional[str], minimum_interval_seconds: float = 1.0
+    ) -> bool:
+        if not self.is_client_session_authorized(client_session_token):
+            return False
+        now = time.monotonic()
+        previous = self._client_request_at.get(client_session_token or "", 0.0)
+        if now - previous < minimum_interval_seconds:
+            return False
+        self._client_request_at[client_session_token or ""] = now
+        return True
+
     def _today_in_india(self) -> str:
         return datetime.now(self.india_timezone).date().isoformat()
 
     def _expire_stale_session(self) -> None:
         if self._access_token and self._session_day != self._today_in_india():
-            self._access_token = None
-            self._session = {}
-            self._session_day = None
+            self.clear_session()
 
     def _discard_expired_states(self) -> None:
         now = time.time()
         self._pending_states = {
-            state: expiry
-            for state, expiry in self._pending_states.items()
-            if expiry >= now
+            state: pending
+            for state, pending in self._pending_states.items()
+            if float(pending.get("expires_at", 0)) >= now
         }
 
 

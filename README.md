@@ -38,10 +38,20 @@ redirect URL in the Kite developer console:
 https://stock-monitor-pro.onrender.com/auth/kite/callback
 ```
 
-Start the daily Kite login at
-`https://stock-monitor-pro.onrender.com/auth/kite/login`. The callback exchanges
-the one-time request token on the server and never returns the access token to
-the browser. Check connection state at `/auth/kite/status`.
+The Android app starts the daily login with `POST /auth/kite/app-session`. This
+returns a random app-session handle and a one-time Zerodha login URL. The
+callback binds that handle to the successful login, exchanges the one-time
+request token on the server, and never returns the Kite access token to the
+browser. Check connection state at `/auth/kite/status` using the app-session
+handle as a Bearer token. `/auth/kite/login` remains available for a manual
+backend-only connection but does not authorize an Android quote session.
+
+After the daily login, authorized `POST /api/kite/quotes` calls accept up to 250
+validated NSE symbols and return normalized full-quote snapshots for the
+Android dashboard. Requests are rate-limited per app session.
+The response includes price, change, timestamp, OHLC, and cumulative session
+volume; it never includes the Kite access token. Android overlays those fields
+onto its native dashboard and keeps Yahoo Finance as a per-symbol fallback.
 
 ## Run
 

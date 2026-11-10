@@ -56,6 +56,32 @@ class KiteAuthServiceTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(KiteAuthError):
             self.service.validate_state(state)
 
+    async def test_app_session_activates_only_after_its_login_callback(self):
+        login = self.service.create_app_login()
+        query = parse_qs(urlparse(login["login_url"]).query)
+        state = parse_qs(query["redirect_params"][0])["state"][0]
+        client_token = login["client_session_token"]
+
+        self.assertFalse(self.service.is_client_session_authorized(client_token))
+        self.assertEqual(self.service.validate_state(state), client_token)
+        self.assertFalse(self.service.is_client_session_authorized(client_token))
+
+        await self.service.exchange_request_token("request-token", client=FakeClient())
+        self.service.activate_client_session(client_token)
+
+        self.assertTrue(self.service.is_client_session_authorized(client_token))
+        self.assertTrue(self.service.allow_client_quote_request(client_token))
+        self.assertFalse(self.service.allow_client_quote_request(client_token))
+
+    async def test_new_broker_login_invalidates_older_app_sessions(self):
+        await self.service.exchange_request_token("first-request", client=FakeClient())
+        self.service.activate_client_session("old-app-session")
+        self.assertTrue(self.service.is_client_session_authorized("old-app-session"))
+
+        await self.service.exchange_request_token("second-request", client=FakeClient())
+
+        self.assertFalse(self.service.is_client_session_authorized("old-app-session"))
+
     def test_checksum_matches_kite_specification(self):
         expected = hashlib.sha256(
             b"public-keyrequest-tokenprivate-secret"
@@ -86,6 +112,13 @@ class KiteAuthServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(result["authenticated_at"])
         self.assertIsNone(result["session_day"])
         self.assertIsNone(self.service.access_token)
+
+    def test_stale_unauthorized_response_cannot_clear_a_newer_token(self):
+        self.service._access_token = "new-token"
+        self.service._session_day = self.service._today_in_india()
+
+        self.assertFalse(self.service.clear_session_if_token("old-token"))
+        self.assertEqual(self.service.access_token, "new-token")
 
 
 if __name__ == "__main__":

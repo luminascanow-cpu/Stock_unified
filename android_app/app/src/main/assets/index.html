@@ -2410,8 +2410,10 @@
     const DAILY_CLOSES_KEY = "stockUnifiedDailyClosesV1";
     const LAST_SUCCESSFUL_SNAPSHOT_KEY = "stockUnifiedLastSuccessfulSnapshotV1";
     const KITE_PROMPT_DAY_KEY = "stockUnifiedKitePromptDayV1";
+    const KITE_CLIENT_SESSION_KEY = "stockUnifiedKiteClientSessionV1";
     const KITE_STATUS_URL = "https://stock-monitor-pro.onrender.com/auth/kite/status";
-    const KITE_LOGIN_URL = "https://stock-monitor-pro.onrender.com/auth/kite/login";
+    const KITE_APP_SESSION_URL = "https://stock-monitor-pro.onrender.com/auth/kite/app-session";
+    const KITE_QUOTES_URL = "https://stock-monitor-pro.onrender.com/api/kite/quotes";
     const SNAPSHOT_VERSION = 1;
     const MARKET_OPEN_REFRESH_MS = 30000;
     const MARKET_CLOSED_REFRESH_MS = 300000;
@@ -2470,6 +2472,9 @@
     let kiteStatusAbortController = null;
     let kitePromptPreviousFocus = null;
     let lastObservedKiteDay = null;
+    let latestKiteStatus = null;
+    let kiteClientSessionToken = loadKiteClientSessionToken();
+    let kiteRefreshPending = false;
     const collectingRequests = new Set();
     const nativePending = new Map();
     let customStockListExpanded = false;
@@ -4013,6 +4018,95 @@
       return callNativeAsync(method);
     }
 
+    function mergeKiteQuotesIntoDashboard(dashboard, payload) {
+      const base = dashboard && typeof dashboard === "object" ? dashboard : {};
+      const hasFiniteValue = (value) => value !== null
+        && value !== undefined
+        && value !== ""
+        && Number.isFinite(Number(value));
+      const isPositive = (value) => hasFiniteValue(value) && Number(value) > 0;
+      const isNonNegative = (value) => hasFiniteValue(value) && Number(value) >= 0;
+      const quotes = (Array.isArray(payload?.quotes) ? payload.quotes : []).filter((quote) => (
+        quote?.available === true
+        && isPositive(quote?.ltp)
+        && isPositive(quote?.previous_close)
+        && isPositive(quote?.quote_epoch)
+        && isNonNegative(quote?.session_volume)
+        && hasFiniteValue(quote?.change)
+        && hasFiniteValue(quote?.change_percent)
+      ));
+      if (!quotes.length) return base;
+      const quoteBySymbol = new Map(
+        quotes.map((quote) => [normalizeCustomSymbol(quote?.symbol), quote])
+      );
+      const mergeRow = (row) => {
+        const quote = quoteBySymbol.get(normalizeCustomSymbol(row?.symbol));
+        return quote ? Object.assign({}, row, quote, {quote_source: "Zerodha Kite"}) : row;
+      };
+      const existingQuotes = Array.isArray(base.watchlist_quotes) ? base.watchlist_quotes : [];
+      const mergedSymbols = new Set();
+      const watchlistQuotes = existingQuotes.map((row) => {
+        mergedSymbols.add(normalizeCustomSymbol(row?.symbol));
+        return mergeRow(row);
+      });
+      quotes.forEach((quote) => {
+        const symbol = normalizeCustomSymbol(quote?.symbol);
+        if (symbol && !mergedSymbols.has(symbol)) watchlistQuotes.push(quote);
+      });
+      const latestEpoch = quotes.reduce(
+        (latest, quote) => Math.max(latest, Number(quote?.quote_epoch) || 0),
+        Number(base.quote_epoch) || 0
+      );
+      const latestQuote = quotes.find((quote) => Number(quote?.quote_epoch) === latestEpoch);
+      return Object.assign({}, base, {
+        watchlist_quotes: watchlistQuotes,
+        top_predictions: Array.isArray(base.top_predictions)
+          ? base.top_predictions.map(mergeRow)
+          : [],
+        quote_epoch: latestEpoch || base.quote_epoch,
+        quote_timestamp: latestQuote?.quote_timestamp || base.quote_timestamp,
+        quote_source: "Zerodha Kite with Yahoo Finance fallback",
+        kite_quote_count: Number(payload?.quote_count) || quotes.length,
+        kite_requested_count: Number(payload?.requested_count) || quotes.length
+      });
+    }
+
+    async function fetchKiteQuotesForDashboard(dashboard) {
+      if (!latestKiteStatus?.authenticated
+          || !latestKiteStatus?.client_session_authenticated
+          || !kiteClientSessionToken) return dashboard;
+      const symbols = [...new Set(
+        (Array.isArray(dashboard?.watchlist_symbols) ? dashboard.watchlist_symbols : [])
+          .map(normalizeCustomSymbol)
+          .filter(Boolean)
+      )].slice(0, 250);
+      if (!symbols.length) return dashboard;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(KITE_QUOTES_URL, {
+          method: "POST",
+          headers: kiteAuthorizationHeaders({"Accept": "application/json", "Content-Type": "application/json"}),
+          body: JSON.stringify({symbols}),
+          cache: "no-store",
+          signal: controller.signal
+        });
+        if (response.status === 401) {
+          clearKiteClientSessionToken();
+          latestKiteStatus = Object.assign({}, latestKiteStatus, {
+            authenticated: false,
+            client_session_authenticated: false
+          });
+          checkKiteSession({offerDailyPrompt: false});
+          throw new Error("Kite login is required");
+        }
+        if (!response.ok) throw new Error("Kite quotes HTTP " + response.status);
+        return mergeKiteQuotesIntoDashboard(dashboard, await response.json());
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     function istDayKey(date = new Date()) {
       const parts = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Kolkata",
@@ -4030,6 +4124,40 @@
       } catch (_error) {
         return "";
       }
+    }
+
+    function loadKiteClientSessionToken() {
+      try {
+        return localStorage.getItem(KITE_CLIENT_SESSION_KEY) || "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function saveKiteClientSessionToken(token) {
+      kiteClientSessionToken = String(token || "");
+      try {
+        if (kiteClientSessionToken) {
+          localStorage.setItem(KITE_CLIENT_SESSION_KEY, kiteClientSessionToken);
+        }
+      } catch (_error) {
+        // The login can still complete even if this WebView cannot persist storage.
+      }
+    }
+
+    function clearKiteClientSessionToken() {
+      kiteClientSessionToken = "";
+      try {
+        localStorage.removeItem(KITE_CLIENT_SESSION_KEY);
+      } catch (_error) {
+        // Keep the in-memory token cleared when storage is unavailable.
+      }
+    }
+
+    function kiteAuthorizationHeaders(extraHeaders = {}) {
+      return kiteClientSessionToken
+        ? Object.assign({}, extraHeaders, {Authorization: "Bearer " + kiteClientSessionToken})
+        : extraHeaders;
     }
 
     function rememberKitePromptDay() {
@@ -4073,13 +4201,51 @@
       requestAnimationFrame(() => kiteDialogConnectButton.focus());
     }
 
-    function startKiteLogin() {
+    async function startKiteLogin() {
       rememberKitePromptDay();
-      closeKiteAuthPrompt({restoreFocus: false});
-      window.location.assign(KITE_LOGIN_URL);
+      kiteConnectButton.disabled = true;
+      kiteDialogConnectButton.disabled = true;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      try {
+        const response = await fetch(KITE_APP_SESSION_URL, {
+          method: "POST",
+          headers: {"Accept": "application/json"},
+          cache: "no-store",
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error("Kite login setup HTTP " + response.status);
+        const payload = await response.json();
+        if (!payload?.login_url || !payload?.client_session_token) {
+          throw new Error("Kite login setup returned incomplete data");
+        }
+        saveKiteClientSessionToken(payload.client_session_token);
+        closeKiteAuthPrompt({restoreFocus: false});
+        window.location.assign(payload.login_url);
+      } catch (error) {
+        updateKiteSessionCard(
+          {label: "LOGIN ERROR", tone: "error", canConnect: true, canRetry: true, checking: false},
+          "Kite login could not start. Yahoo Finance remains active; try again when online."
+        );
+      } finally {
+        clearTimeout(timeout);
+        kiteConnectButton.disabled = false;
+        kiteDialogConnectButton.disabled = false;
+      }
+    }
+
+    function requestKiteDashboardRefresh() {
+      kiteRefreshPending = true;
+      if (!liveSyncInFlight && hasCompletedFirstSync) {
+        kiteRefreshPending = false;
+        setTimeout(() => refreshLiveData().catch((error) => console.error("Kite refresh error:", error)), 0);
+      }
     }
 
     async function checkKiteSession({offerDailyPrompt = false} = {}) {
+      const wasConnected = Boolean(
+        latestKiteStatus?.authenticated && latestKiteStatus?.client_session_authenticated
+      );
       const requestSequence = ++kiteStatusRequestSequence;
       if (kiteStatusAbortController) kiteStatusAbortController.abort();
       const requestController = new AbortController();
@@ -4093,21 +4259,27 @@
       try {
         const response = await fetch(KITE_STATUS_URL, {
           method: "GET",
-          headers: {"Accept": "application/json"},
+          headers: kiteAuthorizationHeaders({"Accept": "application/json"}),
           cache: "no-store",
           signal: requestController.signal
         });
         if (!response.ok) throw new Error("Kite status HTTP " + response.status);
         const status = await response.json();
         if (requestSequence !== kiteStatusRequestSequence) return;
+        latestKiteStatus = status;
 
-        if (status.authenticated) {
+        if (status.authenticated && status.client_session_authenticated) {
           updateKiteSessionCard(
             {label: "CONNECTED", tone: "connected", canConnect: false, canRetry: false, checking: false},
             "Kite is authenticated for today. The daily broker login is complete."
           );
           closeKiteAuthPrompt({restoreFocus: false});
+          if (!wasConnected) requestKiteDashboardRefresh();
           return;
+        }
+
+        if (!status.client_session_authenticated) {
+          clearKiteClientSessionToken();
         }
 
         if (!status.configured) {
@@ -4179,6 +4351,7 @@
       liveSyncInFlight = true;
       const requestedCustomStocksKey = JSON.stringify(customStocks);
       let watchlistChangedDuringSync = false;
+      let kiteRefreshSatisfiedDuringSync = false;
       const collectingToken = !hasCompletedFirstSync
         ? showCollecting(
             "COLLECTING MARKET INTELLIGENCE",
@@ -4207,7 +4380,18 @@
         if (dashboardAccepted) {
           lastSuccessfulSyncAt = Date.now();
           const previousDashboard = currentDashboard;
-          currentDashboard = dashboardResult.value;
+          const kiteEligibleAtOverlay = Boolean(
+            latestKiteStatus?.authenticated
+            && latestKiteStatus?.client_session_authenticated
+            && kiteClientSessionToken
+          );
+          try {
+            currentDashboard = await fetchKiteQuotesForDashboard(dashboardResult.value);
+            kiteRefreshSatisfiedDuringSync = kiteEligibleAtOverlay;
+          } catch (error) {
+            console.warn("Kite quote overlay unavailable; keeping Yahoo Finance data:", error);
+            currentDashboard = dashboardResult.value;
+          }
           renderDashboard(currentDashboard, currentMarketStatus, {previousDashboard});
         }
 
@@ -4221,8 +4405,8 @@
             keyState.textContent = currentMarketStatus.is_open ? "MARKET OPEN" : "MARKET CLOSED";
           }
           const hasLiveRows = dashboardAccepted
-            && Array.isArray(dashboardResult.value?.top_predictions)
-            && dashboardResult.value.top_predictions.length > 0;
+            && Array.isArray(currentDashboard?.top_predictions)
+            && currentDashboard.top_predictions.length > 0;
           if (dashboardAccepted) {
             engineStatus.textContent = hasLiveRows ? "ONLINE" : "DATA UNAVAILABLE";
             engineStatus.className = hasLiveRows ? "teal" : "red";
@@ -4239,7 +4423,9 @@
         liveSyncInFlight = false;
         hasCompletedFirstSync = true;
         if (collectingToken) hideCollecting(collectingToken);
-        if (watchlistChangedDuringSync) {
+        if (kiteRefreshSatisfiedDuringSync) kiteRefreshPending = false;
+        if (watchlistChangedDuringSync || kiteRefreshPending) {
+          kiteRefreshPending = false;
           setTimeout(() => refreshLiveData().catch((error) => console.error("Watchlist refresh error:", error)), 0);
         }
       }
@@ -4932,8 +5118,7 @@
           refreshTimer = null;
           return;
         }
-        checkKiteSession({offerDailyPrompt: true});
-        syncOnce();
+        checkKiteSession({offerDailyPrompt: true}).finally(syncOnce);
       });
     }
 

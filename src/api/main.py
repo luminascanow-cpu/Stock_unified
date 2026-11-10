@@ -19,8 +19,10 @@ from ..services.india_specific import india_service
 from ..services.alert_service import alert_manager
 from ..services.scheduler_service import market_hours_scheduler
 from ..services.kite_auth_service import kite_auth_service, KiteAuthError
+from ..services.kite_market_service import kite_market_service, KiteMarketError
 from ..models.models import DashboardData
 from ..utils.config import config
+from pydantic import BaseModel, Field
 
 prediction_engine = prediction_engine_v2
 dashboard_data: DashboardData = None
@@ -31,6 +33,10 @@ logger = logging.getLogger(__name__)
 portfolio_data: List[dict] = []
 watchlist: List[str] = []
 fcm_tokens: Dict[str, dict] = {}
+
+
+class KiteQuoteRequest(BaseModel):
+    symbols: List[str] = Field(min_length=1, max_length=250)
 
 
 async def init_data_task():
@@ -198,7 +204,10 @@ async def refresh_data():
 async def broker_status():
     kite_status = kite_auth_service.status()
     return {
-        **kite_status,
+        "configured": kite_status["configured"],
+        "authenticated": kite_status["authenticated"],
+        "session_day": kite_status["session_day"],
+        "requires_daily_login": kite_status["requires_daily_login"],
         "source": "Zerodha Kite" if kite_status["authenticated"] else "Yahoo Finance",
         "fallback_source": "Yahoo Finance",
         "login_url": "/auth/kite/login" if kite_status["configured"] else None,
@@ -226,10 +235,11 @@ async def kite_callback(
         redirect_params = request.query_params.get("redirect_params", "")
         state = parse_qs(redirect_params).get("state", [None])[0]
     try:
-        kite_auth_service.validate_state(state)
+        client_session_token = kite_auth_service.validate_state(state)
         if status and status.lower() != "success":
             raise KiteAuthError("Kite login was not completed successfully.")
         await kite_auth_service.exchange_request_token(request_token or "")
+        kite_auth_service.activate_client_session(client_session_token)
     except KiteAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -251,9 +261,58 @@ async def kite_callback(
     return response
 
 
+def bearer_token(request: Request) -> Optional[str]:
+    authorization = request.headers.get("Authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    return token.strip() if scheme.lower() == "bearer" and token.strip() else None
+
+
+@app.post("/auth/kite/app-session")
+async def kite_app_session():
+    try:
+        payload = kite_auth_service.create_app_login()
+    except KiteAuthError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    response = JSONResponse(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/auth/kite/status")
-async def kite_status():
-    response = JSONResponse(kite_auth_service.status())
+async def kite_status(request: Request):
+    payload = kite_auth_service.status()
+    client_session_authenticated = kite_auth_service.is_client_session_authorized(
+        bearer_token(request)
+    )
+    payload["client_session_authenticated"] = client_session_authenticated
+    if not client_session_authenticated:
+        payload.update(
+            authenticated=False,
+            authenticated_at=None,
+            user_id=None,
+            session_day=None,
+        )
+    response = JSONResponse(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.post("/api/kite/quotes")
+async def kite_quotes(quote_request: KiteQuoteRequest, request: Request):
+    client_session_token = bearer_token(request)
+    if not kite_auth_service.is_client_session_authorized(client_session_token):
+        raise HTTPException(status_code=401, detail="Authorized app session required.")
+    if not kite_auth_service.allow_client_quote_request(client_session_token):
+        raise HTTPException(
+            status_code=429,
+            detail="Kite quote refresh is limited to one request per second.",
+            headers={"Retry-After": "1"},
+        )
+    try:
+        payload = await kite_market_service.get_quotes(quote_request.symbols)
+    except KiteMarketError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    response = JSONResponse(payload)
     response.headers["Cache-Control"] = "no-store"
     return response
 
