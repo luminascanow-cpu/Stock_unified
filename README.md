@@ -53,6 +53,23 @@ The response includes price, change, timestamp, OHLC, and cumulative session
 volume; it never includes the Kite access token. Android overlays those fields
 onto its native dashboard and keeps Yahoo Finance as a per-symbol fallback.
 
+### GoCharting Premium footprint confirmations
+
+The Android Matrix can combine its existing technical direction with fresh
+GoCharting Premium order-flow alerts. Configure `GOCHARTING_WEBHOOK_TOKEN` on
+the server and send the GoCharting plain-text webhook to:
+
+```text
+https://stock-monitor-pro.onrender.com/api/orderflow/gocharting/webhook
+```
+
+The webhook message is a JSON object containing the token, NSE symbol, BUY or
+SELL signal, and interval. Signals expire after seven minutes by default; missing
+or stale data is shown as `AWAITING DATA`, never inferred from OHLCV candles.
+The selected Lens stock links directly to its GoCharting terminal chart. See
+[`docs/GOCHARTING_ORDERFLOW_SETUP.md`](docs/GOCHARTING_ORDERFLOW_SETUP.md) for
+the complete Premium alert setup.
+
 ## Run
 
 ```bash
@@ -74,6 +91,9 @@ python3 cli.py --refresh --sectors --alerts
 | `GET /api/sectors` | Sector analysis |
 | `GET /api/alerts` | Active alerts |
 | `GET /api/broker/status` | Check current market data source |
+| `POST /api/orderflow/gocharting/webhook` | Receive an authenticated GoCharting alert |
+| `GET /api/orderflow/signals` | Read fresh order-flow confirmations by symbol |
+| `GET /api/orderflow/status` | Check GoCharting receiver status |
 
 ## Config
 

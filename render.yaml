@@ -16,3 +16,5 @@ services:
         sync: false
       - key: KITE_API_SECRET
         sync: false
+      - key: GOCHARTING_WEBHOOK_TOKEN
+        sync: false

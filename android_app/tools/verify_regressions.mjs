@@ -133,6 +133,49 @@ const safeExternalUrl = new Function(
 assert(safeExternalUrl("https://example.com/report").startsWith("https://"), "HTTPS article links must remain usable");
 assert(safeExternalUrl("javascript:alert(1)") === "#", "executable URL schemes must be rejected");
 
+const orderflowStateHarness = new Function(
+  `
+    ${functionSource("normalizeCustomSymbol", "customStockListViewModel")}
+    const latestOrderflowSignals = new Map();
+    let latestOrderflowStatus = {configured: true};
+    ${functionSource("matrixTrend", "currentOrderflowSignal")}
+    ${functionSource("currentOrderflowSignal", "scheduleOrderflowExpiryRender")}
+    ${functionSource("matrixOrderflowState", "orderflowBadgeHtml")}
+    return {latestOrderflowSignals, matrixOrderflowState};
+  `
+)();
+orderflowStateHarness.latestOrderflowSignals.set("INFY", {
+  symbol: "INFY",
+  signal: "BUY",
+  expires_at: "2100-01-01T00:00:00+00:00"
+});
+assert(
+  orderflowStateHarness.matrixOrderflowState({symbol: "INFY", psar_trend: "bull"}).key === "buy",
+  "a bullish Matrix row plus fresh GoCharting BUY must confirm BUY"
+);
+assert(
+  orderflowStateHarness.matrixOrderflowState({symbol: "INFY", psar_trend: "bear"}).key === "conflict",
+  "Matrix and GoCharting disagreement must render as conflict"
+);
+orderflowStateHarness.latestOrderflowSignals.set("INFY", {
+  symbol: "INFY",
+  signal: "SELL",
+  expires_at: "2100-01-01T00:00:00+00:00"
+});
+assert(
+  orderflowStateHarness.matrixOrderflowState({symbol: "INFY", psar_trend: "bear"}).key === "sell",
+  "a bearish Matrix row plus fresh GoCharting SELL must confirm SELL"
+);
+orderflowStateHarness.latestOrderflowSignals.set("INFY", {
+  symbol: "INFY",
+  signal: "BUY",
+  expires_at: "2000-01-01T00:00:00+00:00"
+});
+assert(
+  orderflowStateHarness.matrixOrderflowState({symbol: "INFY", psar_trend: "bull"}).key === "waiting",
+  "expired GoCharting alerts must return to WAIT"
+);
+
 const istDayKey = new Function(
   `${functionSource("istDayKey", "readKitePromptDay")}; return istDayKey;`
 )();
@@ -366,6 +409,13 @@ assert(source.includes('checkKiteSession({offerDailyPrompt: true}).finally(syncO
 assert(source.includes("Yahoo Finance remains active while Kite is disconnected"), "the daily login dialog must name the non-blocking fallback");
 assert(!source.includes('type="password"'), "the Android asset must never request a broker password or API secret");
 assert(!source.includes("KITE_API_SECRET"), "the Kite API secret must remain server-side");
+assert(source.includes('GOCHARTING_SIGNALS_URL = "https://stock-monitor-pro.onrender.com/api/orderflow/signals"'), "the Android app must read the deployed short-lived order-flow feed");
+assert(source.includes('id="detailOrderflowSignal">AWAITING DATA</'), "Lens must reserve a stable GoCharting confirmation state");
+assert(source.includes('GOCHARTING_TERMINAL_URL + "?ticker=" + encodeURIComponent("NSE:" + normalized)'), "Lens must deep-link the selected NSE symbol into GoCharting");
+assert(source.includes("if (!options.fromCache) refreshOrderflowSignals(rowsForMatrix);"), "live Matrix refreshes must also refresh GoCharting confirmations");
+assert(source.includes("GoCharting order flow disagrees with the current Matrix direction"), "conflicting order flow must not be mislabeled as a trade confirmation");
+assert(source.includes("orderflowRequestBySymbol.get(symbol) === requestId"), "overlapping order-flow fetches must resolve independently per symbol");
+assert(source.includes("scheduleOrderflowExpiryRender();"), "order-flow badges must rerender at the exact signal expiry");
 const removedMoneyRotationMarkers = [
   "money rotation",
   "money-rotation",

@@ -782,7 +782,7 @@
     }
 
     .table-scroll { overflow-x: auto; }
-    table { width: 100%; min-width: 780px; border-collapse: collapse; }
+    table { width: 100%; min-width: 860px; border-collapse: collapse; }
     th, td {
       padding: 12px 10px;
       border-bottom: 1px solid rgba(69, 71, 76, 0.72);
@@ -918,6 +918,16 @@
     .badge.red { background: rgba(231, 59, 62, 0.13); }
     .badge.gray { color: var(--muted); background: rgba(197, 198, 204, 0.08); }
     .badge.yellow { color: var(--yellow); background: rgba(255, 214, 10, 0.12); }
+
+    .flow-badge {
+      min-width: 76px;
+      justify-content: center;
+    }
+
+    .flow-badge.conflict {
+      color: var(--yellow);
+      background: rgba(255, 214, 10, 0.12);
+    }
 
     .score {
       height: 6px;
@@ -1735,6 +1745,87 @@
       padding: 16px;
     }
 
+    .orderflow-card {
+      display: grid;
+      gap: 14px;
+      background:
+        linear-gradient(135deg, rgba(54, 255, 196, 0.08), transparent 46%),
+        var(--surface-low);
+    }
+
+    .orderflow-signal-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .orderflow-signal {
+      margin: 0;
+      color: #fff;
+      font: 900 20px/1.15 "JetBrains Mono", "SFMono-Regular", monospace;
+      text-transform: uppercase;
+    }
+
+    .orderflow-signal.buy { color: var(--teal); }
+    .orderflow-signal.sell { color: #ffb3ae; }
+    .orderflow-signal.conflict,
+    .orderflow-signal.setup { color: var(--yellow); }
+
+    .orderflow-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid rgba(69, 71, 76, 0.72);
+      background: var(--bg-deep);
+    }
+
+    .orderflow-metrics > div {
+      min-width: 0;
+      padding: 11px;
+      border-right: 1px solid rgba(69, 71, 76, 0.72);
+    }
+
+    .orderflow-metrics > div:last-child { border-right: 0; }
+
+    .orderflow-metrics span,
+    .orderflow-metrics strong {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .orderflow-metrics span {
+      color: var(--dim);
+      font: 800 8px/1.2 "JetBrains Mono", "SFMono-Regular", monospace;
+      text-transform: uppercase;
+    }
+
+    .orderflow-metrics strong {
+      margin-top: 6px;
+      color: #fff;
+      font: 900 11px/1.2 "JetBrains Mono", "SFMono-Regular", monospace;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    .orderflow-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 9px;
+    }
+
+    .orderflow-open {
+      width: 100%;
+      min-height: 48px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--teal);
+      background: var(--teal);
+      color: var(--black);
+      text-decoration: none;
+      font: 900 10px/1 "JetBrains Mono", "SFMono-Regular", monospace;
+      text-transform: uppercase;
+    }
+
     .revenue-chart {
       display: grid;
       gap: 12px;
@@ -2309,7 +2400,7 @@
             </div>
             <div class="table-scroll">
               <table>
-                <thead><tr><th>Ticker</th><th class="right">CMP</th><th class="right">RSI</th><th class="right">AF</th><th>Trend</th><th>Signal</th><th class="right">Score</th><th class="right matrix-action-head">Del</th></tr></thead>
+                <thead><tr><th>Ticker</th><th class="right">CMP</th><th class="right">RSI</th><th class="right">AF</th><th>Trend</th><th>Signal</th><th>Flow</th><th class="right">Score</th><th class="right matrix-action-head">Del</th></tr></thead>
                 <tbody id="matrixRows"></tbody>
               </table>
             </div>
@@ -2335,6 +2426,27 @@
             <div><p class="section-label">AF</p><div class="summary-value teal" id="detailAf">--</div></div>
             <div><p class="section-label">52W High</p><div class="summary-value" id="detailHigh">--</div><p class="section-label" id="detailHighDate" style="margin-top:8px">--</p></div>
             <div><p class="section-label">52W Low</p><div class="summary-value" id="detailLow">--</div><p class="section-label" id="detailLowDate" style="margin-top:8px">--</p></div>
+          </section>
+
+          <section class="detail-block orderflow-card" aria-labelledby="orderflowTitle">
+            <div class="source-row"><span id="orderflowTitle">Volume Footprint</span><span>GoCharting Premium</span></div>
+            <div class="orderflow-signal-row">
+              <div>
+                <p class="section-label">Matrix + footprint confirmation</p>
+                <h3 class="orderflow-signal" id="detailOrderflowSignal">AWAITING DATA</h3>
+              </div>
+              <span class="badge gray" id="detailOrderflowFreshness">NO FRESH ALERT</span>
+            </div>
+            <p class="body-copy" id="detailOrderflowContext">A fresh GoCharting order-flow alert is required before this stock receives a buy or sell confirmation.</p>
+            <div class="orderflow-metrics" aria-label="GoCharting order-flow metrics">
+              <div><span>Delta</span><strong id="detailOrderflowDelta">--</strong></div>
+              <div><span>Buy volume</span><strong id="detailOrderflowBuyVolume">--</strong></div>
+              <div><span>Sell volume</span><strong id="detailOrderflowSellVolume">--</strong></div>
+            </div>
+            <div class="orderflow-actions">
+              <a class="orderflow-open" id="detailOrderflowOpen" href="https://gocharting.com/terminal">Open 5m footprint in GoCharting</a>
+              <p class="body-copy">Uses your saved GoCharting Volume Footprint workspace. Confirmation is informational and does not place an order.</p>
+            </div>
           </section>
 
           <section class="detail-block">
@@ -2414,6 +2526,8 @@
     const KITE_STATUS_URL = "https://stock-monitor-pro.onrender.com/auth/kite/status";
     const KITE_APP_SESSION_URL = "https://stock-monitor-pro.onrender.com/auth/kite/app-session";
     const KITE_QUOTES_URL = "https://stock-monitor-pro.onrender.com/api/kite/quotes";
+    const GOCHARTING_SIGNALS_URL = "https://stock-monitor-pro.onrender.com/api/orderflow/signals";
+    const GOCHARTING_TERMINAL_URL = "https://gocharting.com/terminal";
     const SNAPSHOT_VERSION = 1;
     const MARKET_OPEN_REFRESH_MS = 30000;
     const MARKET_CLOSED_REFRESH_MS = 300000;
@@ -2475,6 +2589,11 @@
     let latestKiteStatus = null;
     let kiteClientSessionToken = loadKiteClientSessionToken();
     let kiteRefreshPending = false;
+    let orderflowRequestSeq = 0;
+    let orderflowExpiryTimer = null;
+    let latestOrderflowStatus = null;
+    const latestOrderflowSignals = new Map();
+    const orderflowRequestBySymbol = new Map();
     const collectingRequests = new Set();
     const nativePending = new Map();
     let customStockListExpanded = false;
@@ -4517,6 +4636,7 @@
           + technicalCoverage.totalCount + " AVAILABLE" + technicalAge + retained;
       }
       renderMatrix(rowsForMatrix);
+      if (!options.fromCache) refreshOrderflowSignals(rowsForMatrix);
       const closeRows = closeWatchlistRows();
       renderSectorFlow(closeRows, marketStatus, options);
       if (closeRows.length) {
@@ -4701,6 +4821,166 @@
       return String(item.psar_trend || item.prediction || "neutral").toLowerCase();
     }
 
+    function currentOrderflowSignal(symbol) {
+      const normalized = normalizeCustomSymbol(symbol);
+      const signal = latestOrderflowSignals.get(normalized) || null;
+      if (!signal) return null;
+      const expiresAt = new Date(signal.expires_at || 0).getTime();
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        latestOrderflowSignals.delete(normalized);
+        return null;
+      }
+      return signal;
+    }
+
+    function scheduleOrderflowExpiryRender() {
+      clearTimeout(orderflowExpiryTimer);
+      orderflowExpiryTimer = null;
+      const expiries = [...latestOrderflowSignals.values()]
+        .map((signal) => new Date(signal?.expires_at || 0).getTime())
+        .filter((value) => Number.isFinite(value) && value > Date.now());
+      if (!expiries.length) return;
+      const delay = Math.max(0, Math.min(...expiries) - Date.now()) + 25;
+      orderflowExpiryTimer = setTimeout(() => {
+        [...latestOrderflowSignals.keys()].forEach(currentOrderflowSignal);
+        renderMatrix(currentMatrixRows);
+        if (selectedSymbol) renderOrderflowDetail(selectedSymbol);
+        scheduleOrderflowExpiryRender();
+      }, delay);
+    }
+
+    function matrixOrderflowState(item) {
+      const signal = currentOrderflowSignal(item?.symbol);
+      if (!signal) {
+        if (latestOrderflowStatus?.configured === false) {
+          return {key: "setup", label: "SETUP", tone: "yellow", signal: null};
+        }
+        return {key: "waiting", label: "WAIT", tone: "gray", signal: null};
+      }
+      const side = String(signal.signal || "").toUpperCase();
+      const trend = matrixTrend(item);
+      if (!item?.technical_unavailable && side === "BUY" && trend.includes("bull")) {
+        return {key: "buy", label: "BUY", tone: "teal", signal};
+      }
+      if (!item?.technical_unavailable && side === "SELL" && trend.includes("bear")) {
+        return {key: "sell", label: "SELL", tone: "red", signal};
+      }
+      return {key: "conflict", label: "CONFLICT", tone: "conflict", signal};
+    }
+
+    function orderflowBadgeHtml(item) {
+      const state = matrixOrderflowState(item);
+      const detail = state.signal
+        ? "GoCharting " + state.signal.signal + " alert · " + relativeAge(state.signal.received_at)
+        : "No fresh GoCharting footprint alert";
+      return '<span class="badge flow-badge ' + state.tone + '" title="' + escapeAttr(detail) + '">' + state.label + '</span>';
+    }
+
+    async function refreshOrderflowSignals(rows = currentMatrixRows) {
+      const symbols = [...new Set(
+        (Array.isArray(rows) ? rows : [])
+          .map((row) => normalizeCustomSymbol(row?.symbol || row))
+          .filter(Boolean)
+      )].slice(0, 250);
+      if (!symbols.length) return;
+      const requestId = ++orderflowRequestSeq;
+      symbols.forEach((symbol) => orderflowRequestBySymbol.set(symbol, requestId));
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 9000);
+      try {
+        const url = GOCHARTING_SIGNALS_URL + "?symbols=" + encodeURIComponent(symbols.join(","));
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {Accept: "application/json"},
+          cache: "no-store",
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error("GoCharting signals HTTP " + response.status);
+        const payload = await response.json();
+        latestOrderflowStatus = {
+          configured: payload?.configured === true,
+          last_received_at: payload?.last_received_at || null
+        };
+        const currentSymbols = new Set(
+          symbols.filter((symbol) => orderflowRequestBySymbol.get(symbol) === requestId)
+        );
+        currentSymbols.forEach((symbol) => latestOrderflowSignals.delete(symbol));
+        (Array.isArray(payload?.signals) ? payload.signals : []).forEach((signal) => {
+          const symbol = normalizeCustomSymbol(signal?.symbol);
+          if (symbol && currentSymbols.has(symbol)) latestOrderflowSignals.set(symbol, signal);
+        });
+        scheduleOrderflowExpiryRender();
+        renderMatrix(currentMatrixRows);
+        if (selectedSymbol) renderOrderflowDetail(selectedSymbol);
+      } catch (error) {
+        if (error?.name !== "AbortError") console.error("GoCharting signal refresh error:", error);
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function formatOrderflowMetric(value, suffix = "") {
+      const number = numberOrNull(value);
+      if (number === null) return "--";
+      const absolute = Math.abs(number);
+      const formatted = absolute >= 10000000
+        ? (number / 10000000).toFixed(2) + "Cr"
+        : absolute >= 100000
+        ? (number / 100000).toFixed(2) + "L"
+        : absolute >= 1000
+        ? (number / 1000).toFixed(1) + "K"
+        : number.toFixed(0);
+      return formatted + suffix;
+    }
+
+    function renderOrderflowDetail(symbol) {
+      const normalized = normalizeCustomSymbol(symbol);
+      const row = currentMatrixRows.find((item) => normalizeCustomSymbol(item?.symbol) === normalized)
+        || {symbol: normalized, technical_unavailable: true};
+      const state = matrixOrderflowState(row);
+      const signal = state.signal;
+      const title = document.getElementById("detailOrderflowSignal");
+      const freshness = document.getElementById("detailOrderflowFreshness");
+      const context = document.getElementById("detailOrderflowContext");
+      title.textContent = state.key === "buy"
+        ? "CONFIRMED BUY"
+        : state.key === "sell"
+        ? "CONFIRMED SELL"
+        : state.key === "conflict"
+        ? "FLOW CONFLICT"
+        : state.key === "setup"
+        ? "SETUP REQUIRED"
+        : "AWAITING DATA";
+      title.className = "orderflow-signal" + (state.key === "waiting" ? "" : " " + state.key);
+      freshness.textContent = signal
+        ? String(signal.interval || "5m").toUpperCase() + " · " + relativeAge(signal.received_at)
+        : "NO FRESH ALERT";
+      freshness.className = "badge " + (state.tone === "conflict" ? "yellow" : state.tone);
+      context.textContent = state.key === "buy"
+        ? "The bullish Matrix trend agrees with GoCharting aggressive buying. Reconfirm price structure and risk before acting."
+        : state.key === "sell"
+        ? "The bearish Matrix trend agrees with GoCharting aggressive selling. Reconfirm price structure and risk before acting."
+        : state.key === "conflict"
+        ? "GoCharting order flow disagrees with the current Matrix direction, so no trade confirmation is shown."
+        : state.key === "setup"
+        ? "The backend needs its GoCharting webhook token before Premium alerts can reach Matrix and Lens."
+        : "A fresh GoCharting order-flow alert is required before this stock receives a buy or sell confirmation.";
+      document.getElementById("detailOrderflowDelta").textContent = signal
+        ? formatOrderflowMetric(signal.delta, signal.delta_percent === null || signal.delta_percent === undefined
+          ? ""
+          : " (" + Number(signal.delta_percent).toFixed(1) + "%)")
+        : "--";
+      document.getElementById("detailOrderflowBuyVolume").textContent = signal
+        ? formatOrderflowMetric(signal.buy_volume)
+        : "--";
+      document.getElementById("detailOrderflowSellVolume").textContent = signal
+        ? formatOrderflowMetric(signal.sell_volume)
+        : "--";
+      document.getElementById("detailOrderflowOpen").href = normalized
+        ? GOCHARTING_TERMINAL_URL + "?ticker=" + encodeURIComponent("NSE:" + normalized)
+        : GOCHARTING_TERMINAL_URL;
+    }
+
     function matchesMatrixFilter(item) {
       if (isHiddenMatrixRow(item)) {
         return false;
@@ -4735,7 +5015,7 @@
       const ranked = predictions.slice().sort(compareMatrixRows);
       const visibleRows = ranked.filter(matchesMatrixFilter);
       if (!visibleRows.length) {
-        matrixRows.innerHTML = '<tr><td colspan="8" class="muted">No stocks match this Matrix filter.</td></tr>';
+        matrixRows.innerHTML = '<tr><td colspan="9" class="muted">No stocks match this Matrix filter.</td></tr>';
         return;
       }
       matrixRows.innerHTML = visibleRows.map((item) => {
@@ -4775,6 +5055,7 @@
         const qualityBadge = item.technical_unavailable
           ? '<span class="data-quality-badge">NO TECH</span>'
           : (item.technical_stale ? '<span class="data-quality-badge">SAVED TECH</span>' : "");
+        const flowBadge = orderflowBadgeHtml(item);
         const quoteFreshness = item.quote_timestamp
           ? "QUOTE " + relativeAge(item.quote_timestamp)
           : "QUOTE TIME UNKNOWN";
@@ -4782,7 +5063,7 @@
           + (isFo ? " fo-row" : "")
           + (item.technical_stale ? " stale-technical" : "")
           + (newsPriority === "high" ? " news-priority" : (newsPriority === "medium" ? " news-watch" : ""));
-        return '<tr class="' + rowClass + '" data-symbol="' + escapeAttr(normalizedSymbol || symbol) + '"><td><button class="row-open-button" type="button" data-open-symbol="' + escapeAttr(normalizedSymbol || symbol) + '" aria-label="Open ' + escapeAttr(symbol) + ' stock details"><span class="symbol-cell">' + escapeHtml(symbol) + foBadge + newsBadge + qualityBadge + '</span></button></td><td class="right"><span class="cmp-cell"><span class="cmp-value">' + fmtNum(item.ltp, 2) + '</span><span class="cmp-change ' + changeClass + '">' + changeText + '</span><span class="cmp-freshness">' + escapeHtml(quoteFreshness) + '</span></span></td><td class="right"><span class="rsi-stack"><span class="rsi-pill ' + rsiClass + '">' + rsiText + '</span><span class="rsi-label">' + rsiLabel + '</span></span></td><td class="right teal">' + afText + '<span class="score"><span style="--w:' + afWidth + '%"></span></span></td><td><span class="badge ' + trendBadge + '">' + escapeHtml(trend) + '</span></td><td><span class="badge ' + badge + '">' + escapeHtml(tech) + '</span></td><td class="right ' + direction + '">' + scoreText + '</td><td class="right"><button class="row-delete-button" type="button" data-delete-symbol="' + escapeAttr(symbol) + '" aria-label="Delete ' + escapeAttr(symbol) + ' from Matrix" title="Delete from Matrix">x</button></td></tr>';
+        return '<tr class="' + rowClass + '" data-symbol="' + escapeAttr(normalizedSymbol || symbol) + '"><td><button class="row-open-button" type="button" data-open-symbol="' + escapeAttr(normalizedSymbol || symbol) + '" aria-label="Open ' + escapeAttr(symbol) + ' stock details"><span class="symbol-cell">' + escapeHtml(symbol) + foBadge + newsBadge + qualityBadge + '</span></button></td><td class="right"><span class="cmp-cell"><span class="cmp-value">' + fmtNum(item.ltp, 2) + '</span><span class="cmp-change ' + changeClass + '">' + changeText + '</span><span class="cmp-freshness">' + escapeHtml(quoteFreshness) + '</span></span></td><td class="right"><span class="rsi-stack"><span class="rsi-pill ' + rsiClass + '">' + rsiText + '</span><span class="rsi-label">' + rsiLabel + '</span></span></td><td class="right teal">' + afText + '<span class="score"><span style="--w:' + afWidth + '%"></span></span></td><td><span class="badge ' + trendBadge + '">' + escapeHtml(trend) + '</span></td><td><span class="badge ' + badge + '">' + escapeHtml(tech) + '</span></td><td>' + flowBadge + '</td><td class="right ' + direction + '">' + scoreText + '</td><td class="right"><button class="row-delete-button" type="button" data-delete-symbol="' + escapeAttr(symbol) + '" aria-label="Delete ' + escapeAttr(symbol) + ' from Matrix" title="Delete from Matrix">x</button></td></tr>';
       }).join("");
 
       matrixRows.querySelectorAll("[data-symbol]").forEach((row) => {
@@ -4830,6 +5111,7 @@
       document.getElementById("detailLowDate").textContent = "--";
       document.getElementById("revenueChart").innerHTML = '<div class="body-copy">Loading revenue chart...</div>';
       document.getElementById("detailNews").innerHTML = '<div class="body-copy">Searching recent articles...</div>';
+      renderOrderflowDetail(symbol);
     }
 
     function openStockDetail(symbol) {
@@ -4838,6 +5120,7 @@
       const requestId = ++detailRequestSeq;
       setDetailLoading(normalized);
       openView("detail");
+      refreshOrderflowSignals([normalized]);
       const collectingToken = showCollecting(
         "LOADING STOCK LENS",
         "Collecting the latest quote, revenue history, range, and recent headlines for " + normalized + "."
@@ -4877,6 +5160,7 @@
       document.getElementById("detailLow").textContent = range.low ? "₹" + fmtNum(range.low, 2) : "--";
       document.getElementById("detailHighDate").textContent = range.high_date || "--";
       document.getElementById("detailLowDate").textContent = range.low_date || "--";
+      renderOrderflowDetail(detail.symbol);
       renderRevenueChart(revenue);
       renderDetailNews(news);
     }

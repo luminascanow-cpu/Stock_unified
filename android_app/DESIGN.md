@@ -89,6 +89,7 @@ Primary actions use teal fill or teal borders. Destructive Matrix actions use re
 Bottom tabs retain stable icon and label geometry. Matrix rows may combine F&O, RSI, and news badges; news priority wins the row-edge color while every badge remains textual.
 Multi-day close weakness scans the complete active watchlist, including symbols added by in-app discovery. Each weakness row is a full-width terminal control that opens the existing stock Lens and exposes hover, press, and keyboard-focus states.
 Matrix and close-ledger status use compact textual coverage labels. Partial scans keep prior technical rows in place and add `SAVED TECH` or `NO TECH` badges; quote age is shown beside CMP so stale and missing data never rely on color alone.
+Matrix order-flow is a separate confirmation column. A fresh GoCharting alert may confirm BUY or SELL only when it agrees with the existing Matrix trend; disagreement is `CONFLICT`, and unavailable or expired data is `WAIT`. Lens owns the full Volume Footprint context and links to the matching NSE symbol in GoCharting.
 Matrix custom-stock management stays compact: the saved active count remains visible, while removable ticker chips appear only through an explicit `Manage` disclosure and collapse after a successful add.
 
 ### Forms and overlays

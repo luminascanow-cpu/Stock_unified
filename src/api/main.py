@@ -20,6 +20,10 @@ from ..services.alert_service import alert_manager
 from ..services.scheduler_service import market_hours_scheduler
 from ..services.kite_auth_service import kite_auth_service, KiteAuthError
 from ..services.kite_market_service import kite_market_service, KiteMarketError
+from ..services.gocharting_orderflow_service import (
+    gocharting_orderflow_service,
+    GoChartingOrderflowError,
+)
 from ..models.models import DashboardData
 from ..utils.config import config
 from pydantic import BaseModel, Field
@@ -313,6 +317,54 @@ async def kite_quotes(quote_request: KiteQuoteRequest, request: Request):
     except KiteMarketError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     response = JSONResponse(payload)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.post("/api/orderflow/gocharting/webhook")
+async def gocharting_orderflow_webhook(request: Request):
+    try:
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > gocharting_orderflow_service.max_body_bytes:
+                    raise GoChartingOrderflowError("Webhook body is too large.", status_code=413)
+            except ValueError as exc:
+                raise GoChartingOrderflowError("Invalid Content-Length header.") from exc
+        body = bytearray()
+        async for chunk in request.stream():
+            if len(body) + len(chunk) > gocharting_orderflow_service.max_body_bytes:
+                raise GoChartingOrderflowError("Webhook body is too large.", status_code=413)
+            body.extend(chunk)
+        signal = gocharting_orderflow_service.ingest(bytes(body))
+    except GoChartingOrderflowError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    response = JSONResponse({"status": "accepted", "signal": signal})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.get("/api/orderflow/signals")
+async def get_orderflow_signals(symbols: str = ""):
+    try:
+        requested = [item for item in symbols.split(",") if item.strip()]
+        signals = gocharting_orderflow_service.get_signals(requested)
+    except GoChartingOrderflowError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    response = JSONResponse(
+        {
+            **gocharting_orderflow_service.status(),
+            "requested_count": len(requested),
+            "signals": signals,
+        }
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.get("/api/orderflow/status")
+async def get_orderflow_status():
+    response = JSONResponse(gocharting_orderflow_service.status())
     response.headers["Cache-Control"] = "no-store"
     return response
 
